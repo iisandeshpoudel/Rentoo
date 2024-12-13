@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-primary-50;
+  }
+
+  h1 {
+    @apply text-4xl font-bold text-gray-900;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold text-gray-900;
+  }
+
+  h3 {
+    @apply text-2xl font-medium text-gray-900;
+  }
+
+  h4 {
+    @apply text-xl font-medium text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-premium-sm 
+    text-sm font-medium text-white bg-gradient-premium hover:bg-gradient-premium-hover 
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 
+    transform transition-all duration-200 hover:shadow-premium-md hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center px-4 py-2 border border-primary-200 rounded-md shadow-premium-sm 
+    text-sm font-medium text-primary-700 bg-white hover:bg-primary-50 
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 
+    transform transition-all duration-200 hover:shadow-premium-md hover:-translate-y-0.5;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-soft-sm 
+    text-sm font-medium text-white bg-gradient-gold hover:bg-gradient-gold-hover 
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 
+    transform transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-premium-sm hover:shadow-premium-md transition-shadow duration-200;
+  }
+
+  .card-premium {
+    @apply bg-gradient-to-br from-white to-primary-50 rounded-lg shadow-premium-md 
+    hover:shadow-premium-lg transition-all duration-200 border border-primary-100;
+  }
+
+  .card-gold {
+    @apply bg-gradient-to-br from-white to-accent-50 rounded-lg shadow-soft-md 
+    hover:shadow-soft-lg transition-all duration-200 border border-accent-100;
+  }
+
+  .input-primary {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-soft-sm 
+    placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 
+    focus:border-primary-500 sm:text-sm transition-shadow duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-100 text-primary-800;
+  }
+
+  .badge-secondary {
+    @apply bg-secondary-100 text-secondary-800;
+  }
+
+  .badge-accent {
+    @apply bg-accent-100 text-accent-800;
+  }
+
+  .page-container {
+    @apply min-h-screen bg-primary-50;
+  }
+
+  .content-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .section-container {
+    @apply bg-white/50 backdrop-blur-sm rounded-lg shadow-premium-sm p-6;
+  }
+
+  .dashboard-container {
+    @apply bg-primary-50 min-h-screen;
+  }
+
+  .dashboard-content {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6;
+  }
+
+  .dashboard-card {
+    @apply bg-white/70 backdrop-blur-sm rounded-lg shadow-premium-sm p-6 hover:shadow-premium-md transition-all duration-200;
+  }
+
+  .stats-card {
+    @apply bg-gradient-to-br from-white/80 to-primary-50/80 backdrop-blur-sm rounded-lg shadow-premium-sm 
+    border border-primary-100 p-6 hover:shadow-premium-md transition-all duration-200;
+  }
+
+  .table-container {
+    @apply bg-white/70 backdrop-blur-sm rounded-lg shadow-premium-sm overflow-hidden;
+  }
+
+  .table-header {
+    @apply bg-primary-50/50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+
+  .table-row {
+    @apply hover:bg-primary-50/50 transition-colors duration-150;
+  }
+}
