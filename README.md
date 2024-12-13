@@ -1,4 +1,5 @@
-# Rental Marketplace
+# # Rentoo
+### Rental Marketplace
 
 A modern web application for renting and listing items, built with React, TypeScript, and Tailwind CSS.
 
