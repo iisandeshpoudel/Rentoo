@@ -414,17 +414,19 @@ A modern web application for renting and listing items, built with React, TypeSc
 1. Clone the repository:
 ```bash
 git clone [repository-url]
-cd rental-marketplace
+cd Rentoo
 ```
 
 2. Install dependencies for both frontend and backend:
+root directory --> frontend
+server directory --> backend
+   
 ```bash
-# Install frontend dependencies
-cd frontend
+# Install frontend dependencies (root directory)
 npm install
 
-# Install backend dependencies
-cd ../backend
+# Install backend dependencies (server directory)
+cd server
 npm install
 ```
 
@@ -439,20 +441,18 @@ VITE_UPLOAD_URL=http://localhost:5000/uploads
 #### Backend Environment (.env)
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/rental-marketplace
-JWT_SECRET=your-secret-key
-JWT_EXPIRES_IN=7d
+MONGODB_URI=mongodb://localhost:27017/Rentoo
+JWT_SECRET=Rentoo
 UPLOAD_DIR=uploads
 ```
 
 4. Start Development Servers
 ```bash
-# Start backend server
-cd backend
+# Start backend server (from server directory)
 npm run dev
 
-# Start frontend server
-cd frontend
+# Start frontend server (from root directory)
+cd server
 npm run dev
 ```
 
@@ -462,13 +462,6 @@ npm run dev
 - Email: admin@example.com
 - Password: admin123
 
-#### Test Vendor
-- Email: vendor@example.com
-- Password: vendor123
-
-#### Test Customer
-- Email: customer@example.com
-- Password: customer123
 
 ## Recent Updates
 
