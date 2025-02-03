@@ -10,7 +10,8 @@ router.get('/:id', productController.getProduct);
 
 // Vendor routes (protected)
 router.post('/', auth, checkRole('vendor'), productController.createProduct);
-router.get('/vendor', auth, checkRole('vendor'), productController.getVendorProducts);
+router.get('/vendor/products', auth, checkRole('vendor'), productController.getVendorProducts);
+router.put('/:id', auth, checkRole('vendor'), productController.updateProduct);
 router.patch('/:id', auth, checkRole('vendor'), productController.updateProduct);
 router.delete('/:id', auth, checkRole('vendor'), productController.deleteProduct);
 

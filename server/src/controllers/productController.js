@@ -203,70 +203,111 @@ exports.getProduct = async (req, res) => {
 
 // Update product
 exports.updateProduct = async (req, res) => {
-  upload(req, res, async (err) => {
-    try {
-      if (err) {
-        console.error('Upload error:', err);
-        return res.status(400).json({ error: err.message });
-      }
+  try {
+    console.log('Update request:', {
+      body: req.body,
+      contentType: req.headers['content-type'],
+      userId: req.user._id
+    });
 
-      console.log('Update request body:', req.body);
-      const productData = JSON.parse(req.body.productData || '{}');
-      console.log('Parsed update data:', productData);
+    // Find the product and verify ownership
+    const product = await Product.findOne({
+      _id: req.params.id,
+      vendor: req.user._id
+    });
 
-      const validationErrors = validateProduct(productData);
-      if (validationErrors.length > 0) {
-        if (req.files) {
-          await Promise.all(req.files.map(file => deleteFile(file.path)));
-        }
-        return res.status(400).json({ error: validationErrors.join(', ') });
-      }
-
-      const product = await Product.findOne({
-        _id: req.params.id,
-        vendor: req.user._id
-      });
-
-      if (!product) {
-        if (req.files) {
-          await Promise.all(req.files.map(file => deleteFile(file.path)));
-        }
-        return res.status(404).json({ error: 'Product not found' });
-      }
-
-      // Handle image updates
-      if (req.files && req.files.length > 0) {
-        // Delete old images
-        const oldImageUrls = product.images;
-        const oldFilePaths = oldImageUrls.map(url => {
-          const filename = url.split('/').pop();
-          return path.join(__dirname, '../../uploads/products', filename);
-        });
-        
-        await Promise.all(oldFilePaths.map(filepath => deleteFile(filepath)));
-
-        // Add new images
-        productData.images = req.files.map(file => getImageUrl(file.filename));
-      }
-
-      Object.assign(product, productData);
-      await product.save();
-      await product.populate('vendor', 'name email');
-      
-      console.log('Updated product:', {
-        id: product._id,
-        images: product.images
-      });
-      
-      res.json(product);
-    } catch (error) {
-      console.error('Error in updateProduct:', error);
-      if (req.files) {
-        await Promise.all(req.files.map(file => deleteFile(file.path)));
-      }
-      res.status(400).json({ error: error.message });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found or unauthorized' });
     }
-  });
+
+    // Handle simple availability update
+    if (Object.keys(req.body).length === 1 && 'availability' in req.body) {
+      product.availability = Boolean(req.body.availability);
+      await product.save();
+      
+      console.log('Updated product availability:', {
+        id: product._id,
+        availability: product.availability
+      });
+      
+      return res.json(product);
+    }
+
+    // Handle multipart form data (file uploads)
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+      return upload(req, res, async (err) => {
+        try {
+          if (err) {
+            console.error('Upload error:', err);
+            return res.status(400).json({ error: err.message });
+          }
+
+          const productData = JSON.parse(req.body.productData || '{}');
+          console.log('Parsed update data:', productData);
+
+          const validationErrors = validateProduct(productData);
+          if (validationErrors.length > 0) {
+            if (req.files) {
+              await Promise.all(req.files.map(file => deleteFile(file.path)));
+            }
+            return res.status(400).json({ error: validationErrors.join(', ') });
+          }
+
+          // Handle image updates
+          if (req.files && req.files.length > 0) {
+            // Delete old images
+            const oldImageUrls = product.images;
+            const oldFilePaths = oldImageUrls.map(url => {
+              const filename = url.split('/').pop();
+              return path.join(__dirname, '../../uploads/products', filename);
+            });
+            
+            await Promise.all(oldFilePaths.map(filepath => deleteFile(filepath)));
+
+            // Add new images
+            productData.images = req.files.map(file => getImageUrl(file.filename));
+          }
+
+          Object.assign(product, productData);
+          await product.save();
+          await product.populate('vendor', 'name email');
+          
+          console.log('Updated product:', {
+            id: product._id,
+            images: product.images
+          });
+          
+          res.json(product);
+        } catch (error) {
+          console.error('Error in updateProduct:', error);
+          if (req.files) {
+            await Promise.all(req.files.map(file => deleteFile(file.path)));
+          }
+          res.status(400).json({ error: error.message });
+        }
+      });
+    }
+
+    // Handle regular PATCH request
+    const validationErrors = validateProduct({ ...product.toObject(), ...req.body });
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors.join(', ') });
+    }
+
+    Object.assign(product, req.body);
+    await product.save();
+    await product.populate('vendor', 'name email');
+    
+    console.log('Updated product:', {
+      id: product._id,
+      ...req.body
+    });
+    
+    res.json(product);
+  } catch (error) {
+    console.error('Error in updateProduct:', error);
+    res.status(400).json({ error: error.message });
+  }
 };
 
 // Delete product

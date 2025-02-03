@@ -42,6 +42,7 @@ const ProductDetail: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const getImageUrl = (imagePath: string | undefined) => {
     if (!imagePath) return PLACEHOLDER_IMAGE;
@@ -76,7 +77,18 @@ const ProductDetail: React.FC = () => {
     fetchProduct();
   }, [id]);
 
+  const calculateTotalPrice = (start: Date, end: Date, dailyRate: number) => {
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays * dailyRate;
+  };
+
   const handleRentalRequest = async () => {
+    if (!user || !localStorage.getItem('token')) {
+      navigate('/login');
+      return;
+    }
+
     if (!startDate || !endDate) {
       setError('Please select both start and end dates');
       return;
@@ -92,30 +104,46 @@ const ProductDetail: React.FC = () => {
       return;
     }
 
+    if (userRole !== 'customer') {
+      setError('Only customers can make rental requests');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/rental-requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           productId: id,
           startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
+          endDate: endDate.toISOString(),
+          totalPrice: calculateTotalPrice(startDate, endDate, product?.dailyRate || 0),
+          message: 'Rental request from customer'
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit rental request');
+        if (response.status === 403) {
+          navigate('/login');
+          throw new Error('Please login to submit a rental request');
+        }
+        throw new Error(errorData.message || 'Failed to submit rental request');
       }
 
       const data = await response.json();
-      navigate('/dashboard');
+      setSuccessMessage('Rental request submitted successfully!');
+      setTimeout(() => {
+        setSuccessMessage('');
+        navigate('/dashboard');
+      }, 2000);
     } catch (err) {
       console.error('Rental request error:', err);
       setError(err instanceof Error ? err.message : 'Failed to submit request');
@@ -344,6 +372,11 @@ const ProductDetail: React.FC = () => {
           )}
         </div>
       </div>
+      {successMessage && (
+        <div className="text-center text-green-600 p-4">
+          {successMessage}
+        </div>
+      )}
     </div>
   );
 };

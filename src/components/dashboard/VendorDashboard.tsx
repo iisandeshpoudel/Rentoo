@@ -37,6 +37,8 @@ interface ApiRentalRequest extends Omit<RentalRequest, 'product'> {
   product?: Product;
 }
 
+const API_URL = 'http://localhost:5000';
+
 const VendorDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'requests'>('products');
   const [products, setProducts] = useState<Product[]>([]);
@@ -45,6 +47,7 @@ const VendorDashboard: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [productSearch, setProductSearch] = useState('');
   const [requestSearch, setRequestSearch] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   const handleEdit = (productId: string) => {
@@ -57,7 +60,7 @@ const VendorDashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const response = await fetch(`${API_URL}/api/products/${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -78,15 +81,21 @@ const VendorDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
         const [productsRes, requestsRes] = await Promise.all([
-          fetch('http://localhost:5000/api/vendor/products', {
+          fetch(`${API_URL}/api/products/vendor/products`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           }),
-          fetch('http://localhost:5000/api/vendor/rental-requests', {
+          fetch(`${API_URL}/api/rental-requests/vendor/rental-requests`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           })
         ]);
@@ -100,42 +109,40 @@ const VendorDashboard: React.FC = () => {
           requestsRes.json()
         ]);
 
-        // Filter out any invalid rental requests
-        const validRequestsData = (requestsData as ApiRentalRequest[]).filter((request): request is RentalRequest => 
-          request !== null &&
-          request.product !== undefined &&
-          request.customer !== undefined &&
-          request.status !== undefined
-        );
+        console.log('Fetched products:', productsData);
+        console.log('Fetched rental requests:', requestsData);
 
         setProducts(productsData);
-        setRentalRequests(validRequestsData);
+        setRentalRequests(requestsData);
+        setLoading(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
-      } finally {
+        console.error('Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
         setLoading(false);
       }
     };
 
     fetchData();
+  }, [navigate]);
+
+  useEffect(() => {
+    // Get tab from URL parameters
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'requests') {
+      setActiveTab('requests');
+    }
   }, []);
 
   const handleUpdateRequestStatus = async (requestId: string, newStatus: RentalRequest['status']) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/rental-requests/${requestId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update request status');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
       }
 
-      // Update local state
+      // Optimistically update UI
       setRentalRequests(prev =>
         prev.map(request =>
           request._id === requestId
@@ -143,40 +150,82 @@ const VendorDashboard: React.FC = () => {
             : request
         )
       );
+
+      const response = await fetch(`${API_URL}/api/rental-requests/${requestId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        // Revert UI state on error
+        setRentalRequests(prev =>
+          prev.map(request =>
+            request._id === requestId
+              ? { ...request, status: request.status }
+              : request
+          )
+        );
+
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update request status');
+      }
+
+      const updatedRequest = await response.json();
+      console.log('Updated rental request:', updatedRequest);
+
+      // Show success message
+      setSuccessMessage(`Rental request ${newStatus.toLowerCase()} successfully`);
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
+      console.error('Error updating request status:', err);
       setError(err instanceof Error ? err.message : 'Failed to update request status');
     }
   };
 
   const handleToggleProductAvailability = async (productId: string, newAvailability: boolean) => {
     try {
-      // Find the current product
-      const currentProduct = products.find(p => p._id === productId);
-      if (!currentProduct) {
-        throw new Error('Product not found');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
-        method: 'PATCH',
+      // Optimistically update UI
+      setProducts(prev =>
+        prev.map(p =>
+          p._id === productId
+            ? { ...p, availability: newAvailability }
+            : p
+        )
+      );
+
+      const response = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          productData: JSON.stringify({
-            name: currentProduct.name,
-            description: currentProduct.description,
-            category: currentProduct.category,
-            dailyRate: currentProduct.dailyRate,
-            location: currentProduct.location,
-            condition: currentProduct.condition,
-            contactDetails: currentProduct.contactDetails,
-            availability: newAvailability
-          })
+          availability: newAvailability
         })
       });
 
       if (!response.ok) {
+        // Revert UI state on error
+        setProducts(prev =>
+          prev.map(p =>
+            p._id === productId
+              ? { ...p, availability: !newAvailability }
+              : p
+          )
+        );
+
         // Try to parse error message from JSON response
         let errorMessage = 'Failed to update product availability';
         try {
@@ -189,28 +238,15 @@ const VendorDashboard: React.FC = () => {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      const updatedProduct = await response.json();
+      console.log('Product availability updated:', updatedProduct);
 
-      // Update local state
-      setProducts(prev =>
-        prev.map(product =>
-          product._id === productId
-            ? { ...product, availability: data.availability }
-            : product
-        )
-      );
+      // Show success message
+      setSuccessMessage('Product availability updated successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('Error updating product availability:', err);
       setError(err instanceof Error ? err.message : 'Failed to update product availability');
-      
-      // Revert the UI state since the update failed
-      setProducts(prev =>
-        prev.map(product =>
-          product._id === productId
-            ? { ...product, availability: !newAvailability }
-            : product
-        )
-      );
     }
   };
 
@@ -232,6 +268,114 @@ const VendorDashboard: React.FC = () => {
       request.status.toLowerCase().includes(searchTerm)
     );
   });
+
+  const renderRequestActions = (request: RentalRequest) => {
+    switch (request.status) {
+      case 'pending':
+        return (
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleUpdateRequestStatus(request._id, 'approved')}
+              className="group relative px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Accept
+              </span>
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+            </button>
+            <button
+              onClick={() => handleUpdateRequestStatus(request._id, 'rejected')}
+              className="group relative px-5 py-2.5 text-sm font-medium bg-red-500 text-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Reject
+              </span>
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+            </button>
+          </div>
+        );
+      case 'approved':
+        return (
+          <button
+            onClick={() => handleUpdateRequestStatus(request._id, 'completed')}
+            className="group relative px-5 py-2.5 text-sm font-medium bg-green-500 text-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark Complete
+            </span>
+            <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+          </button>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg border border-green-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Completed
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg border border-red-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Rejected
+          </span>
+        );
+      case 'cancelled':
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg border border-gray-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Cancelled
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderRequestStatus = (status: RentalRequest['status']) => {
+    const statusClasses = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      approved: 'bg-blue-100 text-blue-800',
+      completed: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      cancelled: 'bg-gray-100 text-gray-800'
+    };
+
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusClasses[status]}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
+  const renderNotificationIndicator = (request: RentalRequest) => {
+    if (request.status === 'pending') {
+      return (
+        <div className="ml-2 inline-flex items-center">
+          <span className="flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+        </div>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return (
@@ -351,7 +495,7 @@ const VendorDashboard: React.FC = () => {
                     className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                   >
                     <svg className="-ml-1 mr-2 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 01-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
                     Add Product
                   </button>
@@ -419,17 +563,22 @@ const VendorDashboard: React.FC = () => {
                         <div className="flex items-center space-x-3">
                           <button
                             onClick={() => handleToggleProductAvailability(product._id, !product.availability)}
-                            className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none ${
+                            className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
                               product.availability ? 'bg-purple-500' : 'bg-gray-200'
                             }`}
+                            aria-pressed={product.availability}
+                            aria-label="Toggle availability"
                           >
+                            <span className="sr-only">
+                              {product.availability ? 'Available' : 'Not Available'}
+                            </span>
                             <span
                               className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${
                                 product.availability ? 'translate-x-5' : 'translate-x-0'
                               }`}
                             />
                           </button>
-                          <span className={`text-sm font-medium ${product.availability ? 'text-purple-600' : 'text-gray-500'}`}>
+                          <span className="text-sm text-gray-600">
                             {product.availability ? 'Available' : 'Not Available'}
                           </span>
                         </div>
@@ -548,45 +697,11 @@ const VendorDashboard: React.FC = () => {
                         ${request.totalPrice}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          request.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800'
-                            : request.status === 'approved'
-                            ? 'bg-purple-100 text-purple-800'
-                            : request.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : request.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                        </span>
+                        {renderRequestStatus(request.status)}
+                        {renderNotificationIndicator(request)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                        {request.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleUpdateRequestStatus(request._id, 'approved')}
-                              className="text-purple-600 hover:text-purple-900 focus:outline-none focus:underline transition-colors duration-150"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleUpdateRequestStatus(request._id, 'rejected')}
-                              className="text-red-600 hover:text-red-900 focus:outline-none focus:underline transition-colors duration-150"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {request.status === 'approved' && (
-                          <button
-                            onClick={() => handleUpdateRequestStatus(request._id, 'completed')}
-                            className="text-amber-600 hover:text-amber-900 focus:outline-none focus:underline transition-colors duration-150"
-                          >
-                            Mark as Completed
-                          </button>
-                        )}
+                        {renderRequestActions(request)}
                       </td>
                     </tr>
                   ))}

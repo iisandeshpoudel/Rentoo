@@ -6,7 +6,7 @@ const rentalRequestSchema = new mongoose.Schema({
     ref: 'Product',
     required: true
   },
-  customer: {
+  renter: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -73,7 +73,7 @@ const rentalRequestSchema = new mongoose.Schema({
 });
 
 // Index for faster queries
-rentalRequestSchema.index({ customer: 1, status: 1 });
+rentalRequestSchema.index({ renter: 1, status: 1 });
 rentalRequestSchema.index({ vendor: 1, status: 1 });
 rentalRequestSchema.index({ product: 1 });
 rentalRequestSchema.index({ paid: 1, returned: 1 });

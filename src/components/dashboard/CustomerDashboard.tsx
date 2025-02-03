@@ -43,6 +43,7 @@ const CustomerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchRentalRequests = async () => {
@@ -54,7 +55,7 @@ const CustomerDashboard: React.FC = () => {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/customer/rental-requests', {
+        const response = await fetch(`${API_URL}/api/rental-requests/customer/rental-requests`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -106,7 +107,7 @@ const CustomerDashboard: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/rental-requests/${requestId}/cancel`, {
+      const response = await fetch(`${API_URL}/api/rental-requests/${requestId}/cancel`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -122,20 +123,14 @@ const CustomerDashboard: React.FC = () => {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to cancel request');
+        throw new Error('Failed to cancel rental request');
       }
 
-      // Update the local state
-      setRentalRequests(prev =>
-        prev.map(request =>
-          request._id === requestId
-            ? { ...request, status: 'cancelled' as const }
-            : request
-        )
-      );
-    } catch (err) {
-      console.error('Error canceling request:', err);
-      setError(err instanceof Error ? err.message : 'Failed to cancel request');
+      // Refresh the rental requests list
+      fetchRentalRequests();
+    } catch (error) {
+      console.error('Error cancelling rental request:', error);
+      setError('Failed to cancel rental request');
     }
   };
 
@@ -146,7 +141,12 @@ const CustomerDashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/rental-requests/${rentalId}`, {
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/rental-requests/${rentalId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -154,12 +154,18 @@ const CustomerDashboard: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete rental history');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete rental history');
       }
 
       // Remove the deleted rental from state
       setRentalRequests(prev => prev.filter(rental => rental._id !== rentalId));
+      
+      // Show success message
+      setSuccessMessage('Rental history deleted successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
+      console.error('Error deleting rental:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete rental history');
     }
   };
@@ -248,6 +254,21 @@ const CustomerDashboard: React.FC = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-green-700">{successMessage}</p>
             </div>
           </div>
         </div>
