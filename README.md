@@ -1,4 +1,4 @@
-# # Rentoo
+# Rentoo
 ### Rental Marketplace
 
 A modern web application for renting and listing items, built with React, TypeScript, and Tailwind CSS.
@@ -401,6 +401,75 @@ A modern web application for renting and listing items, built with React, TypeSc
 - GET `/api/admin/logs` - Get system logs
 - GET `/api/admin/activity` - Get user activity
 
+## Recent Updates
+
+### Review System Improvements
+- Added complete CRUD operations for reviews
+  - Create: Users can submit reviews with ratings (1-5) and comments
+  - Read: View all reviews for a product with pagination
+  - Update: Users can edit their own reviews
+  - Delete: Users can delete their own reviews
+- Added review statistics
+  - Average rating calculation
+  - Total reviews count
+  - Real-time stats updates when reviews are modified
+- Implemented authorization checks
+  - Only authenticated users can submit reviews
+  - Users can only edit/delete their own reviews
+  - One review per user per product
+
+### API Endpoint Improvements
+- Fixed routing issues for better organization
+  - Products: `/api/products`
+  - Reviews: `/api/reviews`
+  - Auth: `/api/auth`
+  - Notifications: `/api/notifications`
+- Added proper CORS configuration
+  - Enabled credentials
+  - Configured allowed methods and headers
+  - Set proper origin handling
+
+### Notification System
+- Added notification endpoints
+  - GET `/api/notifications`: Fetch notifications with pagination
+  - PUT `/api/notifications/:id/read`: Mark single notification as read
+  - PUT `/api/notifications/read-all`: Mark all notifications as read
+- Notification features:
+  - Pagination support
+  - Real-time updates
+  - Different notification types (rental requests, approvals, etc.)
+  - Unread/read status tracking
+
+### Authentication Improvements
+- Enhanced user authentication
+  - Added `/api/auth/me` endpoint for current user info
+  - Improved token handling
+  - Better error handling for auth failures
+
+### UI/UX Improvements
+- Review Section
+  - Star rating display
+  - Edit/Delete buttons for user's own reviews
+  - Real-time updates after actions
+  - Validation for review submissions
+  - Error handling and user feedback
+- Form Validations
+  - Comment length restrictions (10-500 characters)
+  - Rating validation (1-5 stars)
+  - Required field handling
+
+### Security Enhancements
+- Added proper authorization middleware
+- Implemented role-based access control
+- Secured API endpoints with proper authentication checks
+- Added input validation and sanitization
+
+### Error Handling
+- Improved error messages and handling
+- Added proper HTTP status codes
+- Better logging for debugging
+- User-friendly error displays
+
 ## Getting Started
 
 ### Prerequisites
@@ -461,43 +530,3 @@ npm run dev
 #### Admin User
 - Email: admin@example.com
 - Password: admin123
-
-
-## Recent Updates
-
-### 1. Enhanced Admin Dashboard
-- Added comprehensive statistics cards
-- Improved user management interface
-- Enhanced table layouts and styling
-- Added role-based color coding
-- Improved search functionality
-- Added data visualization
-- Enhanced user experience
-
-### 2. Enhanced Search Functionality
-- Added global search in navigation bar
-- Implemented real-time filtering
-- Added search across multiple fields
-- Role-specific search interfaces
-
-### 3. UI Improvements
-- Professional navigation bar design
-- Centered search with icon
-- Improved responsive design
-- Enhanced loading states
-
-### 4. Dashboard Enhancements
-- Added search capabilities to all dashboards
-- Improved data filtering
-- Enhanced user experience
-
-### 5. Notification System
-- Real-time notification updates
-- Unread count badge
-- Mark as read functionality
-- Notification types:
-  - Rental requests
-  - Request approvals/rejections
-  - Return notifications
-- Paginated notification list
-- Notification center in navigation bar

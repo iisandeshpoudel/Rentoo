@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useRef, useState, useEffect } from 'react';
 import NotificationCenter from './notifications/NotificationCenter';
@@ -12,6 +12,8 @@ const Navbar: React.FC<NavbarProps> = ({ searchQuery, onSearch }) => {
   const { user, userRole, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const isHomePage = location.pathname === '/home';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -60,7 +62,7 @@ const Navbar: React.FC<NavbarProps> = ({ searchQuery, onSearch }) => {
           </div>
 
           {/* Center section - Search Bar */}
-          {userRole !== 'admin' && (
+          {userRole !== 'admin' && isHomePage && (
             <div className="flex-1 max-w-2xl mx-8">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

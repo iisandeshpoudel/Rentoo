@@ -16,7 +16,7 @@ const NotificationCenter = () => {
   };
 
   return (
-    <Menu as="div" className="relative">
+    <Menu as="div" className="relative inline-block z-50">
       <Menu.Button className="relative p-2 text-white hover:bg-primary-600/50 rounded-full transition-colors duration-200 focus:outline-none">
         <span className="sr-only">View notifications</span>
         <svg
@@ -39,7 +39,7 @@ const NotificationCenter = () => {
         )}
       </Menu.Button>
 
-      <Menu.Items className="absolute right-0 mt-2 w-80 rounded-lg shadow-premium-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden">
+      <Menu.Items className="absolute right-0 mt-2 w-80 rounded-lg shadow-premium-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden z-50">
         <div className="bg-gradient-premium px-4 py-3 flex items-center justify-between">
           <h3 className="text-white font-medium">Notifications</h3>
           {notifications.length > 0 && (

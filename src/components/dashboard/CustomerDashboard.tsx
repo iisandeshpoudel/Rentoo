@@ -190,161 +190,164 @@ const CustomerDashboard: React.FC = () => {
   };
 
   // Filter rental requests based on search query
-  const filteredRentalRequests = rentalRequests.filter(request =>
-    (request.product?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (request.vendor?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.status.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRequests = rentalRequests.filter(request => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (request.product?.name || '').toLowerCase().includes(searchLower) ||
+      (request.vendor?.name || '').toLowerCase().includes(searchLower) ||
+      request.status.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-600 p-4">
-        {error}
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Rental Requests</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">My Rental Requests</h1>
+        
+        {/* Search Bar */}
         <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg 
+              className="h-5 w-5 text-gray-400" 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path 
+                fillRule="evenodd" 
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" 
+                clipRule="evenodd" 
+              />
+            </svg>
+          </div>
           <input
             type="text"
+            placeholder="Search requests..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search rentals..."
-            className="block w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
           />
         </div>
       </div>
 
-      {filteredRentalRequests.length === 0 ? (
-        <div className="text-center text-gray-600 p-4">
-          {searchQuery ? 'No matching rental requests found.' : "You haven't made any rental requests yet."}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-6">
-          {filteredRentalRequests.map((request) => (
-            <div
-              key={request._id}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
-            >
-              <div className="p-6">
-                <div className="md:flex md:justify-between md:items-center">
+      )}
+
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        {filteredRequests.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {filteredRequests.map((request) => (
+              <li key={request._id} className="px-4 py-4 sm:px-6">
+                <div className="flex items-center justify-between">
+                  {/* Product and Vendor Info */}
                   <div className="flex items-center space-x-4">
-                    {request.product ? (
-                      <>
+                    <div className="flex-shrink-0 w-16 h-16">
+                      {request.product ? (
                         <img
                           src={getImageUrl(request.product.images?.[0])}
                           alt={request.product.name || 'Product Image'}
-                          className="h-20 w-20 object-cover rounded bg-gray-100"
+                          className="w-16 h-16 object-cover rounded-md bg-gray-100"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             if (target.src !== PLACEHOLDER_IMAGE) {
-                              console.log('Failed to load image:', target.src);
                               target.src = PLACEHOLDER_IMAGE;
                               target.onerror = null;
                             }
                           }}
                         />
-                        <div>
-                          <h3 className="text-lg font-semibold">{request.product.name}</h3>
-                          <p className="text-gray-600">
-                            {request.product.vendor?.name || 'Unknown Vendor'}
-                          </p>
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center">
+                          <span className="text-gray-400 text-sm">No Image</span>
                         </div>
-                      </>
-                    ) : request.productSnapshot ? (
-                      <div className="flex items-center space-x-4">
-                        <div className="h-20 w-20 bg-gray-200 rounded flex items-center justify-center">
-                          <span className="text-gray-500 text-xs text-center">Product No Longer Available</span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-700">{request.productSnapshot.name}</h3>
-                          <p className="text-sm text-gray-600">Product has been removed</p>
-                          <p className="text-xs text-gray-500">
-                            Original price: ${request.productSnapshot.dailyRate}/day
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-4">
-                        <div className="h-20 w-20 bg-gray-200 rounded flex items-center justify-center">
-                          <span className="text-gray-500 text-sm">No Image</span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-500">Product Unavailable</h3>
-                          <p className="text-sm text-gray-600">This product may have been removed</p>
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {request.product?.name || request.productSnapshot?.name || 'Product Unavailable'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {request.vendor?.name || request.product?.vendor?.name || 'Vendor no longer available'}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="mt-4 md:mt-0 text-right">
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(request.status)}`}>
+                  {/* Action Buttons */}
+                  <div className="flex items-center">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(request.status)}`}>
                       {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                     </span>
+                    <div className="ml-4">
+                      {(request.status === 'completed' || request.status === 'rejected' || request.status === 'cancelled') && (
+                        <button
+                          onClick={() => handleDeleteRental(request._id)}
+                          className="px-3 py-1 bg-red-50 text-red-700 rounded-md text-sm font-medium hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          Delete History
+                        </button>
+                      )}
+                      {request.status === 'pending' && (
+                        <button
+                          onClick={() => handleCancelRequest(request._id)}
+                          className="px-3 py-1 bg-gray-50 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                        >
+                          Cancel Request
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex justify-between items-center">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow">
-                    <div>
-                      <p className="text-sm text-gray-600">Rental Period</p>
-                      <p className="font-medium">
-                        {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Total Price</p>
-                      <p className="font-medium">${request.totalPrice}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Status</p>
-                      <p className="font-medium capitalize">{request.status}</p>
-                    </div>
+                {/* Rental Details */}
+                <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-gray-500">
+                  <div>
+                    <span className="font-medium text-gray-900">Rental Period</span>
+                    <p>{new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}</p>
                   </div>
-
-                  <div className="ml-4">
-                    {(request.status === 'completed' || request.status === 'rejected' || request.status === 'cancelled') && (
-                      <button
-                        onClick={() => handleDeleteRental(request._id)}
-                        className="px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
-                      >
-                        Delete History
-                      </button>
-                    )}
-                    {request.status === 'pending' && (
-                      <button
-                        onClick={() => handleCancelRequest(request._id)}
-                        className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-                      >
-                        Cancel Request
-                      </button>
-                    )}
+                  <div>
+                    <span className="font-medium text-gray-900">Total Price</span>
+                    <p>${request.totalPrice}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-900">Status</span>
+                    <p className="capitalize">{request.status}</p>
                   </div>
                 </div>
 
                 {request.message && (
                   <div className="mt-4">
-                    <p className="text-sm text-gray-600">Message</p>
-                    <p className="text-gray-800">{request.message}</p>
+                    <span className="font-medium text-gray-900">Message</span>
+                    <p className="mt-1 text-sm text-gray-500">{request.message}</p>
                   </div>
                 )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="px-4 py-5 text-center text-gray-500 sm:px-6">
+            {searchQuery ? 'No matching rental requests found.' : "You haven't made any rental requests yet."}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

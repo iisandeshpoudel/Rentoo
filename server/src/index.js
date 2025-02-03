@@ -8,6 +8,8 @@ const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const rentalRequestRoutes = require('./routes/rentalRequestRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const reviewRoutes = require('./routes/reviews');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -24,7 +26,9 @@ app.use((req, res, next) => {
 // Middleware
 app.use(cors({
   origin: 'http://localhost:5173',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -55,9 +59,11 @@ mongoose.connect(MONGODB_URI)
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/rental-requests', rentalRequestRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api', productRoutes);
-app.use('/api', rentalRequestRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

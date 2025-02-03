@@ -25,10 +25,6 @@ router.post('/register', async (req, res) => {
       role: role || 'customer' // Default to customer if no role specified
     });
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
     // Save user
     await user.save();
 
@@ -36,20 +32,14 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign(
       { 
         userId: user._id,
-        role: user.role // Include role in token
+        role: user.role
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    // Log for debugging
-    console.log('Registration successful:', {
-      userId: user._id,
-      role: user.role,
-      tokenCreated: true
-    });
-
-    res.json({
+    // Return user data and token
+    res.status(201).json({
       token,
       user: {
         id: user._id,
@@ -116,14 +106,26 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user._id).select('-password');
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
-  } catch (err) {
-    console.error('Get user error:', err);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get current user
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

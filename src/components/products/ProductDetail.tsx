@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import ReviewSection from '../reviews/ReviewSection';
 
 const API_URL = 'http://localhost:5000';
 
@@ -216,10 +217,12 @@ const ProductDetail: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Description</h2>
-            <p className="text-gray-600">{product.description}</p>
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Description</h2>
+            <p className="text-gray-700">{product.description}</p>
           </div>
+
+          <ReviewSection productId={product._id} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -239,7 +242,6 @@ const ProductDetail: React.FC = () => {
               <p className="text-gray-600">{product.vendor.name}</p>
             </div>
           </div>
-
 
           {/* Contact Details */}
           <div className="mt-6 border-t border-gray-200 pt-4">

@@ -45,7 +45,10 @@ userSchema.pre('save', async function(next) {
 userSchema.methods.generateAuthToken = function() {
   const user = this;
   const token = jwt.sign(
-    { userId: user._id.toString() },
+    { 
+      userId: user._id.toString(),
+      role: user.role 
+    },
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '7d' }
   );

@@ -56,6 +56,16 @@ const productSchema = new mongoose.Schema({
       enum: ['phone', 'email', 'both'],
       default: 'both'
     }
+  },
+  reviewStats: {
+    totalReviews: {
+      type: Number,
+      default: 0
+    },
+    averageRating: {
+      type: Number,
+      default: 0
+    }
   }
 }, {
   timestamps: true

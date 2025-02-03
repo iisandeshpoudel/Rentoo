@@ -26,7 +26,7 @@ const auth = (req, res, next) => {
     // Add user info to request
     req.user = {
       _id: decoded.userId,
-      userId: decoded.userId,
+      id: decoded.userId,  
       role: decoded.role
     };
     
