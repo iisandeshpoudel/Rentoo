@@ -51,7 +51,7 @@ export function RentalList({ isVendor, productIds, customerId }: RentalListProps
                   {rental.startDate} - {rental.endDate}
                 </p>
                 <p className="text-sm font-medium">
-                  Total: ${rental.totalPrice}
+                  Total: NPR {rental.totalPrice}
                 </p>
               </div>
               <div className="flex items-center space-x-2">

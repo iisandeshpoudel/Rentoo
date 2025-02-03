@@ -232,8 +232,8 @@ const ProductDetail: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
             <div className="flex items-center justify-between mt-2">
-              <p className="text-xl text-indigo-600 font-semibold">
-                ${product.dailyRate}/day
+              <p className="text-2xl font-bold text-gray-900">
+                NPR {product.dailyRate}/day
               </p>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                 product.availability 
@@ -336,7 +336,7 @@ const ProductDetail: React.FC = () => {
                 <div className="bg-white p-4 rounded-md">
                   <div className="flex justify-between text-sm">
                     <span>Daily Rate:</span>
-                    <span>${product.dailyRate}</span>
+                    <span>NPR {product.dailyRate}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Number of Days:</span>
@@ -344,7 +344,7 @@ const ProductDetail: React.FC = () => {
                   </div>
                   <div className="flex justify-between font-semibold mt-2 pt-2 border-t">
                     <span>Total Price:</span>
-                    <span>${totalPrice}</span>
+                    <span>NPR {totalPrice}</span>
                   </div>
                 </div>
               )}

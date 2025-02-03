@@ -47,10 +47,17 @@ const ProductForm: React.FC = () => {
           [field]: value
         }
       }));
+    } else if (name === 'dailyRate') {
+      // Only update if the value is not empty
+      const numValue = value === '' ? 0 : parseFloat(value);
+      setFormData(prev => ({
+        ...prev,
+        dailyRate: numValue
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: name === 'dailyRate' ? parseFloat(value) || 0 : value
+        [name]: value
       }));
     }
   };
@@ -218,15 +225,16 @@ const ProductForm: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Daily Rate ($)</label>
+          <label className="block text-sm font-medium text-gray-700">Daily Rate (NPR)</label>
           <input
             type="number"
             name="dailyRate"
-            value={formData.dailyRate}
+            value={formData.dailyRate || ''}
             onChange={handleChange}
             required
-            min="0.01"
-            step="0.01"
+            min="1"
+            step="1"
+            placeholder="0"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>

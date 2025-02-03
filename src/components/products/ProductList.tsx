@@ -107,7 +107,10 @@ const ProductList: React.FC<ProductListProps> = ({ vendorView = false, searchQue
             <div className="p-4">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-                <span className="text-indigo-600 font-bold">${product.dailyRate}/day</span>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500">{product.category}</p>
+                  <span className="text-indigo-600 font-bold">NPR {product.dailyRate}/day</span>
+                </div>
               </div>
               
               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>

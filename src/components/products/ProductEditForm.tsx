@@ -229,15 +229,16 @@ const ProductEditForm: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Daily Rate ($)</label>
+          <label className="block text-sm font-medium text-gray-700">Daily Rate (NPR)</label>
           <input
             type="number"
             name="dailyRate"
-            value={formData.dailyRate}
+            value={formData.dailyRate || ''}
             onChange={handleChange}
             required
-            min="0"
-            step="0.01"
+            min="1"
+            step="1"
+            placeholder="0"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>

@@ -34,10 +34,10 @@ export function ProductCard({
       <div className="p-4">
         <h3 className="text-lg font-semibold text-gray-900">{product.title}</h3>
         <p className="mt-1 text-gray-500">{product.description}</p>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-lg font-bold text-gray-900">
-            ${product.price}/day
-          </span>
+        <div className="flex justify-between items-center mt-2">
+          <p className="text-lg font-semibold text-indigo-600">
+            NPR {product.price}/day
+          </p>
           <span className={`px-2 py-1 rounded-full text-sm ${
             product.available 
               ? 'bg-green-100 text-green-800' 
