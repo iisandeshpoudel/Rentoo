@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useRef, useState, useEffect } from 'react';
 import NotificationCenter from './notifications/NotificationCenter';
+import axios from 'axios';
 
 interface NavbarProps {
   searchQuery: string;
@@ -11,6 +12,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ searchQuery, onSearch }) => {
   const { user, userRole, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const isHomePage = location.pathname === '/home';
@@ -27,6 +29,26 @@ const Navbar: React.FC<NavbarProps> = ({ searchQuery, onSearch }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/v1/chat/unread', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setUnreadMessages(response.data.unreadCount);
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
+    };
+
+    if (user) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -99,6 +121,37 @@ const Navbar: React.FC<NavbarProps> = ({ searchQuery, onSearch }) => {
           {/* Right section - Navigation Links & Profile */}
           <div className="flex items-center space-x-4">
             <NotificationCenter />
+            
+            {/* Chat Link */}
+            {userRole !== 'admin' && (
+              <Link
+                to={userRole === 'vendor' ? '/vendor/chats' : '/customer/chats'}
+                className="relative text-white hover:bg-primary-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              >
+                <span className="flex items-center">
+                  <svg 
+                    className="h-5 w-5 mr-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
+                    />
+                  </svg>
+                  Chats
+                </span>
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                    {unreadMessages}
+                  </span>
+                )}
+              </Link>
+            )}
+
             <Link
               to={userRole === 'vendor' ? '/vendor/dashboard' : userRole === 'admin' ? '/admin/dashboard' : '/dashboard'}
               className="text-white hover:bg-primary-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"

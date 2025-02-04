@@ -15,6 +15,12 @@ interface Product {
   };
 }
 
+interface ProductsResponse {
+  products: Product[];
+  total: number;
+  pages: number;
+}
+
 interface Props {
   searchQuery: string;
 }
@@ -24,11 +30,13 @@ const Home: React.FC<Props> = ({ searchQuery }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/products', {
+        const response = await fetch('http://localhost:5000/api/v1/products', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -38,8 +46,10 @@ const Home: React.FC<Props> = ({ searchQuery }) => {
           throw new Error('Failed to fetch products');
         }
 
-        const data = await response.json();
-        setProducts(data);
+        const data: ProductsResponse = await response.json();
+        setProducts(data.products);
+        setTotalProducts(data.total);
+        setTotalPages(data.pages);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load products');
       } finally {
@@ -75,6 +85,14 @@ const Home: React.FC<Props> = ({ searchQuery }) => {
         <div className="bg-red-50 p-4 rounded-lg inline-block">
           <p className="text-red-600">{error}</p>
         </div>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">No products available.</p>
       </div>
     );
   }
@@ -151,6 +169,11 @@ const Home: React.FC<Props> = ({ searchQuery }) => {
           <p className="text-center text-gray-600">No products found.</p>
         )}
       </div>
+      {totalProducts > 0 && (
+        <div className="mt-8 text-center text-gray-600">
+          Showing {filteredProducts.length} of {totalProducts} products
+        </div>
+      )}
     </div>
   );
 };

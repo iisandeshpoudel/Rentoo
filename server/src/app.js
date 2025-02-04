@@ -11,6 +11,7 @@ const rentalRoutes = require('./routes/rentalRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const rentalRequestRoutes = require('./routes/rentalRequestRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 const { createUploadDir } = require('./createUploadDir');
 
 const app = express();
@@ -43,13 +44,14 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
+app.use('/api/v1/products', productRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/rental-requests', rentalRequestRoutes);
+app.use('/api/v1/rental-requests', rentalRequestRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,18 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/productController');
-const auth = require('../middleware/auth');
-const checkRole = require('../middleware/checkRole');
+const { protect, isVendor } = require('../middleware/auth');
+const {
+    createProduct,
+    getProducts,
+    getProduct,
+    getVendorProducts,
+    updateProduct,
+    deleteProduct
+} = require('../controllers/productController');
 
 // Public routes
-router.get('/', productController.getProducts);
-router.get('/:id', productController.getProduct);
+router.get('/', getProducts);
+router.get('/:id', getProduct);
 
 // Vendor routes (protected)
-router.post('/', auth, checkRole('vendor'), productController.createProduct);
-router.get('/vendor/products', auth, checkRole('vendor'), productController.getVendorProducts);
-router.put('/:id', auth, checkRole('vendor'), productController.updateProduct);
-router.patch('/:id', auth, checkRole('vendor'), productController.updateProduct);
-router.delete('/:id', auth, checkRole('vendor'), productController.deleteProduct);
+router.post('/', protect, isVendor, createProduct);
+router.get('/vendor/products', protect, isVendor, getVendorProducts);
+router.put('/:id', protect, isVendor, updateProduct);
+router.delete('/:id', protect, isVendor, deleteProduct);
 
 module.exports = router;

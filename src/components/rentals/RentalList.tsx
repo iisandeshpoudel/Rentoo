@@ -4,6 +4,7 @@ import { useProducts } from '../../context/ProductContext';
 import { RentalRequest } from '../../types';
 import { Button } from '../ui/Button';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import ChatButton from '../chat/ChatButton';
 
 interface RentalListProps {
   isVendor?: boolean;
@@ -53,6 +54,13 @@ export function RentalList({ isVendor, productIds, customerId }: RentalListProps
                 <p className="text-sm font-medium">
                   Total: NPR {rental.totalPrice}
                 </p>
+                {/* Add chat button for communication */}
+                <div className="mt-2">
+                  <ChatButton 
+                    otherUserId={isVendor ? rental.customer.id : product.vendor.id} 
+                    otherUserName={isVendor ? rental.customer.name : product.vendor.name} 
+                  />
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                 {getStatusIcon(rental.status)}

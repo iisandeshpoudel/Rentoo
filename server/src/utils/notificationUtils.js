@@ -1,23 +1,19 @@
 const Notification = require('../models/Notification');
 
-async function createNotification(recipientId, type, title, message, relatedData = {}) {
-  try {
-    const notification = new Notification({
-      recipient: recipientId,
-      type,
-      title,
-      message,
-      ...relatedData
-    });
+exports.createNotification = async ({ recipient, type, message, data = {} }) => {
+    try {
+        const notification = new Notification({
+            recipient,
+            type,
+            message,
+            data,
+            createdAt: new Date()
+        });
 
-    await notification.save();
-    return notification;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    return null;
-  }
-}
-
-module.exports = {
-  createNotification
+        await notification.save();
+        return notification;
+    } catch (error) {
+        console.error('Error creating notification:', error);
+        throw error;
+    }
 };

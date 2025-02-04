@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface Notification {
   _id: string;
@@ -8,6 +9,11 @@ interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
+  relatedData?: {
+    senderId?: string;
+    messageId?: string;
+    [key: string]: any;
+  };
 }
 
 interface NotificationContextType {
@@ -16,37 +22,28 @@ interface NotificationContextType {
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  navigateToNotification: (notification: Notification) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const fetchNotifications = async () => {
-    if (!isAuthenticated) return;
-
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch('http://localhost:5000/api/notifications', {
+      const response = await fetch('/api/v1/notifications', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
         },
-        credentials: 'include'
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-
       const data = await response.json();
       setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      setUnreadCount(data.notifications.filter((n: Notification) => !n.read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -55,21 +52,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const markAsRead = async (id: string) => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+      await fetch(`/api/v1/notifications/${id}/read`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
         },
-        credentials: 'include'
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark notification as read');
-      }
-
       await fetchNotifications();
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -79,43 +67,66 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch('http://localhost:5000/api/notifications/read-all', {
+      await fetch('/api/v1/notifications/mark-all-read', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
         },
-        credentials: 'include'
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark all notifications as read');
-      }
-
       await fetchNotifications();
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchNotifications();
+  const navigateToNotification = async (notification: Notification) => {
+    await markAsRead(notification._id);
+    
+    switch (notification.type) {
+      case 'NEW_MESSAGE':
+        // Navigate to the appropriate chat section based on user role
+        if (user?.role === 'vendor') {
+          navigate('/vendor/chats');
+        } else {
+          navigate('/customer/chats');
+        }
+        break;
+      case 'RENTAL_REQUEST':
+      case 'RENTAL_APPROVED':
+      case 'RENTAL_REJECTED':
+        navigate('/dashboard?tab=requests');
+        break;
+      case 'PAYMENT_RECEIVED':
+        navigate('/dashboard?tab=requests');
+        break;
+      case 'PRODUCT_RETURNED':
+        navigate(`/products/${notification.relatedData?.productId}`);
+        break;
+      default:
+        navigate('/dashboard');
     }
-  }, [isAuthenticated]);
-
-  const value = {
-    notifications,
-    unreadCount,
-    fetchNotifications,
-    markAsRead,
-    markAllAsRead
   };
 
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      // Poll for new notifications every minute
+      const interval = setInterval(fetchNotifications, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
   return (
-    <NotificationContext.Provider value={value}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        fetchNotifications,
+        markAsRead,
+        markAllAsRead,
+        navigateToNotification,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

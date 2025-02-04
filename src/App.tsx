@@ -15,6 +15,8 @@ import ProductForm from './components/products/ProductForm';
 import Profile from './components/profile/Profile';
 import { NotificationProvider } from './contexts/NotificationContext';
 import NotificationCenter from './components/notifications/NotificationCenter';
+import CustomerChatSection from './components/chat/CustomerChatSection';
+import VendorChatSection from './components/chat/VendorChatSection';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: JSX.Element, allowedRoles: string[] }) => {
@@ -151,6 +153,24 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['vendor']}>
                 <ProductEditForm />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Chat Routes */}
+          <Route 
+            path="/customer/chats" 
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerChatSection />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/vendor/chats" 
+            element={
+              <ProtectedRoute allowedRoles={['vendor']}>
+                <VendorChatSection />
               </ProtectedRoute>
             } 
           />

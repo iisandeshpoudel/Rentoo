@@ -1,270 +1,265 @@
 const RentalRequest = require('../models/RentalRequest');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const { createNotification } = require('../utils/notificationUtils');
+
+// Helper function to check for overlapping rental dates
+const hasOverlappingDates = async (productId, startDate, endDate, excludeRequestId = null) => {
+    const query = {
+        product: productId,
+        status: { $in: ['pending', 'approved'] },
+        $or: [
+            {
+                startDate: { $lte: endDate },
+                endDate: { $gte: startDate }
+            }
+        ]
+    };
+
+    if (excludeRequestId) {
+        query._id = { $ne: excludeRequestId };
+    }
+
+    return await RentalRequest.exists(query);
+};
 
 // Create a new rental request
-exports.createRentalRequest = async (req, res) => {
-  try {
-    const { productId, startDate, endDate, message } = req.body;
-    
-    // Validate user role
-    if (req.user.role !== 'customer') {
-      return res.status(403).json({ error: 'Only customers can create rental requests' });
-    }
+const createRentalRequest = async (req, res) => {
+    try {
+        const { productId, startDate, endDate, message } = req.body;
 
-    // Find the product and validate
-    const product = await Product.findById(productId).populate('vendor');
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
+        // Validate dates
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const now = new Date();
 
-    // Check if product is available
-    if (!product.availability) {
-      return res.status(400).json({ error: 'Product is not available for rent' });
-    }
-
-    // Prevent renting own product
-    if (product.vendor._id.toString() === req.user._id) {
-      return res.status(400).json({ error: 'You cannot rent your own product' });
-    }
-
-    // Validate dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const now = new Date();
-
-    if (start < now) {
-      return res.status(400).json({ error: 'Start date cannot be in the past' });
-    }
-
-    if (end <= start) {
-      return res.status(400).json({ error: 'End date must be after start date' });
-    }
-
-    // Check for overlapping rentals
-    const overlappingRental = await RentalRequest.findOne({
-      product: productId,
-      status: { $in: ['pending', 'approved'] },
-      $or: [
-        { startDate: { $lte: end }, endDate: { $gte: start } },
-        { startDate: { $gte: start, $lte: end } },
-        { endDate: { $gte: start, $lte: end } }
-      ]
-    });
-
-    if (overlappingRental) {
-      return res.status(400).json({ error: 'Product is already booked for these dates' });
-    }
-
-    // Calculate total days and price
-    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    const totalPrice = totalDays * product.dailyRate;
-
-    // Create rental request
-    const rentalRequest = new RentalRequest({
-      product: productId,
-      customer: req.user._id,
-      vendor: product.vendor._id,
-      startDate,
-      endDate,
-      totalPrice,
-      message,
-      status: 'pending'
-    });
-
-    await rentalRequest.save();
-
-    // Update populate without execPopulate
-    const populatedRequest = await RentalRequest.findById(rentalRequest._id)
-      .populate('product')
-      .populate('customer', 'name email')
-      .populate('vendor', 'name email');
-    
-    res.status(201).json(populatedRequest);
-  } catch (error) {
-    console.error('Rental request error:', error);
-    res.status(400).json({ error: error.message || 'Failed to create rental request' });
-  }
-};
-
-// Get rental requests for customer
-exports.getCustomerRequests = async (req, res) => {
-  try {
-    console.log('Fetching requests for customer:', req.user._id);
-    const requests = await RentalRequest.find({ customer: req.user._id })
-      .populate({
-        path: 'product',
-        populate: {
-          path: 'vendor',
-          select: 'name email'
+        if (start < now) {
+            return res.status(400).json({ message: 'Start date must be in the future' });
         }
-      })
-      .sort({ createdAt: -1 });
-    
-    // Debug log the first request and check product existence
-    if (requests.length > 0) {
-      const firstRequest = requests[0];
-      console.log('First request details:', {
-        id: firstRequest._id,
-        productId: firstRequest.product ? firstRequest.product._id : firstRequest.product,
-        productRef: firstRequest.toObject().product, // Get the raw product reference
-        status: firstRequest.status
-      });
 
-      // Check if any requests have missing products and try to recover them
-      const brokenRequests = requests.filter(req => !req.product);
-      if (brokenRequests.length > 0) {
-        console.log(`Found ${brokenRequests.length} requests with missing products`);
-        // Get the raw product IDs from the broken requests
-        const brokenProductIds = brokenRequests.map(req => req.toObject().product);
-        console.log('Missing product IDs:', brokenProductIds);
-        
-        // Try to find these products directly
-        const recoveredProducts = await Product.find({
-          '_id': { $in: brokenProductIds }
-        }).select('_id');
-        
-        if (recoveredProducts.length > 0) {
-          console.log('Found some products that still exist:', 
-            recoveredProducts.map(p => p._id));
-        } else {
-          console.log('None of the missing products exist in the database');
+        if (end <= start) {
+            return res.status(400).json({ message: 'End date must be after start date' });
         }
-      }
-    } else {
-      console.log('No requests found');
+
+        // Get product details
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // Check if user is trying to rent their own product
+        if (product.vendor.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot rent your own product' });
+        }
+
+        // Check for overlapping rental dates
+        if (await hasOverlappingDates(productId, start, end)) {
+            return res.status(400).json({ message: 'Product is not available for these dates' });
+        }
+
+        // Calculate total price
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const totalPrice = days * product.pricePerDay;
+
+        // Create rental request
+        const rentalRequest = new RentalRequest({
+            product: productId,
+            renter: req.user._id,
+            vendor: product.vendor,
+            startDate: start,
+            endDate: end,
+            totalPrice,
+            message: message?.trim()
+        });
+
+        await rentalRequest.save();
+
+        // Send notification to vendor
+        await createNotification({
+            recipient: product.vendor,
+            type: 'NEW_RENTAL_REQUEST',
+            message: `New rental request for ${product.name}`,
+            data: {
+                rentalRequestId: rentalRequest._id,
+                productId: product._id,
+                productName: product.name
+            }
+        });
+
+        // Populate product and user details
+        await rentalRequest.populate([
+            { path: 'product', select: 'name images pricePerDay' },
+            { path: 'renter', select: 'name email' },
+            { path: 'vendor', select: 'name email' }
+        ]);
+
+        res.status(201).json(rentalRequest);
+    } catch (error) {
+        console.error('Create rental request error:', error);
+        res.status(500).json({ message: 'Error creating rental request' });
     }
-    
-    res.json(requests);
-  } catch (error) {
-    console.error('Get customer requests error:', error);
-    res.status(500).json({ error: error.message });
-  }
 };
 
-// Get rental requests for vendor
-exports.getVendorRequests = async (req, res) => {
-  try {
-    const requests = await RentalRequest.find({ vendor: req.user._id })
-      .populate('product')
-      .populate('customer', 'name email')
-      .sort({ createdAt: -1 });
-    res.json(requests);
-  } catch (error) {
-    console.error('Get vendor requests error:', error);
-    res.status(500).json({ error: error.message });
-  }
+// Get customer's rental requests
+const getCustomerRequests = async (req, res) => {
+    try {
+        const requests = await RentalRequest.find({ renter: req.user._id })
+            .populate('product', 'name images pricePerDay')
+            .populate('vendor', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json(requests);
+    } catch (error) {
+        console.error('Get customer requests error:', error);
+        res.status(500).json({ message: 'Error getting rental requests' });
+    }
 };
 
-// Update rental request status
-exports.updateRequestStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+// Get vendor's rental requests
+const getVendorRequests = async (req, res) => {
+    try {
+        const requests = await RentalRequest.find({ vendor: req.user._id })
+            .populate('product', 'name images pricePerDay')
+            .populate('renter', 'name email')
+            .sort({ createdAt: -1 });
 
-    // Validate status
-    const validStatuses = ['approved', 'rejected', 'completed', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+        res.json(requests);
+    } catch (error) {
+        console.error('Get vendor requests error:', error);
+        res.status(500).json({ message: 'Error getting rental requests' });
     }
+};
 
-    const request = await RentalRequest.findById(id)
-      .populate('product')
-      .populate('customer', 'name email')
-      .populate('vendor', 'name email');
+// Get rental request details
+const getRequestDetails = async (req, res) => {
+    try {
+        const request = await RentalRequest.findById(req.params.id)
+            .populate('product', 'name images pricePerDay')
+            .populate('renter', 'name email')
+            .populate('vendor', 'name email');
 
-    if (!request) {
-      return res.status(404).json({ error: 'Rental request not found' });
+        if (!request) {
+            return res.status(404).json({ message: 'Rental request not found' });
+        }
+
+        // Check if user is authorized to view this request
+        if (request.renter._id.toString() !== req.user._id.toString() && 
+            request.vendor._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to view this request' });
+        }
+
+        res.json(request);
+    } catch (error) {
+        console.error('Get request details error:', error);
+        res.status(500).json({ message: 'Error getting rental request details' });
     }
+};
 
-    // Validate permissions
-    if (status === 'cancelled') {
-      // Only customer can cancel their request
-      if (request.customer._id.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ error: 'Only the customer can cancel the request' });
-      }
-      // Can only cancel pending requests
-      if (request.status !== 'pending') {
-        return res.status(400).json({ error: 'Can only cancel pending requests' });
-      }
-    } else {
-      // Only vendor can approve/reject/complete
-      if (request.vendor._id.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ error: 'Only the vendor can update this request' });
-      }
-      // Can't update cancelled requests
-      if (request.status === 'cancelled') {
-        return res.status(400).json({ error: 'Cannot update cancelled requests' });
-      }
+// Update rental request status (vendor only)
+const updateRequestStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const request = await RentalRequest.findById(req.params.id)
+            .populate('product', 'name vendor')
+            .populate('renter', 'name email');
+
+        if (!request) {
+            return res.status(404).json({ message: 'Rental request not found' });
+        }
+
+        // Check if user is the vendor
+        if (request.vendor.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to update this request' });
+        }
+
+        // Check if request can be updated
+        if (request.status !== 'pending') {
+            return res.status(400).json({ message: `Cannot update request that is ${request.status}` });
+        }
+
+        // For approval, check if dates are still available
+        if (status === 'approved') {
+            if (await hasOverlappingDates(request.product._id, request.startDate, request.endDate, request._id)) {
+                return res.status(400).json({ message: 'Product is no longer available for these dates' });
+            }
+        }
+
+        request.status = status;
+        await request.save();
+
+        // Send notification to renter
+        await createNotification({
+            recipient: request.renter._id,
+            type: 'RENTAL_REQUEST_STATUS_UPDATED',
+            message: `Your rental request for ${request.product.name} has been ${status}`,
+            data: {
+                rentalRequestId: request._id,
+                productId: request.product._id,
+                productName: request.product.name,
+                status
+            }
+        });
+
+        res.json(request);
+    } catch (error) {
+        console.error('Update request status error:', error);
+        res.status(500).json({ message: 'Error updating rental request status' });
     }
-
-    // Update request status
-    request.status = status;
-    await request.save();
-
-    // If approved, mark product as unavailable
-    if (status === 'approved') {
-      await Product.findByIdAndUpdate(request.product._id, { availability: false });
-    }
-    // If rejected/cancelled/completed, mark product as available
-    if (['rejected', 'cancelled', 'completed'].includes(status)) {
-      await Product.findByIdAndUpdate(request.product._id, { availability: true });
-    }
-
-    res.json(request);
-  } catch (error) {
-    console.error('Update request status error:', error);
-    res.status(400).json({ error: error.message });
-  }
 };
 
 // Cancel rental request (customer only)
-exports.cancelRequest = async (req, res) => {
-  try {
-    const request = await RentalRequest.findOne({
-      _id: req.params.id,
-      customer: req.user._id,
-      status: { $in: ['pending', 'approved'] }
-    });
+const cancelRequest = async (req, res) => {
+    try {
+        const request = await RentalRequest.findById(req.params.id)
+            .populate('product', 'name vendor')
+            .populate('vendor', 'name email');
 
-    if (!request) {
-      return res.status(404).json({
-        error: 'Rental request not found or cannot be cancelled'
-      });
+        if (!request) {
+            return res.status(404).json({ message: 'Rental request not found' });
+        }
+
+        // Check if user is the renter
+        if (request.renter.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to cancel this request' });
+        }
+
+        // Check if request can be cancelled
+        if (!['pending', 'approved'].includes(request.status)) {
+            return res.status(400).json({ message: `Cannot cancel request that is ${request.status}` });
+        }
+
+        request.status = 'cancelled';
+        await request.save();
+
+        // Send notification to vendor
+        await createNotification({
+            recipient: request.vendor._id,
+            type: 'RENTAL_REQUEST_CANCELLED',
+            message: `Rental request for ${request.product.name} has been cancelled`,
+            data: {
+                rentalRequestId: request._id,
+                productId: request.product._id,
+                productName: request.product.name
+            }
+        });
+
+        res.json(request);
+    } catch (error) {
+        console.error('Cancel request error:', error);
+        res.status(500).json({ message: 'Error cancelling rental request' });
     }
-
-    request.status = 'cancelled';
-    if (req.body.message) {
-      request.message = req.body.message;
-    }
-
-    await request.save();
-    res.json(request);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
 };
 
-// Get single rental request details
-exports.getRequestDetails = async (req, res) => {
-  try {
-    const request = await RentalRequest.findOne({
-      _id: req.params.id,
-      $or: [
-        { customer: req.user._id },
-        { vendor: req.user._id }
-      ]
-    })
-      .populate('product')
-      .populate('customer', 'name email')
-      .populate('vendor', 'name email');
-
-    if (!request) {
-      return res.status(404).json({ error: 'Rental request not found' });
-    }
-
-    res.json(request);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}; 
+module.exports = {
+    createRentalRequest,
+    getCustomerRequests,
+    getVendorRequests,
+    getRequestDetails,
+    updateRequestStatus,
+    cancelRequest
+};

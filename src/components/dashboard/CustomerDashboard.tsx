@@ -55,7 +55,7 @@ const CustomerDashboard: React.FC = () => {
           return;
         }
 
-        const response = await fetch(`${API_URL}/api/rental-requests/customer/rental-requests`, {
+        const response = await fetch(`${API_URL}/api/v1/rental-requests/customer`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -71,7 +71,8 @@ const CustomerDashboard: React.FC = () => {
         }
 
         if (!response.ok) {
-          throw new Error('Failed to fetch rental requests');
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch rental requests: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
         }
 
         const data = await response.json();
@@ -107,7 +108,7 @@ const CustomerDashboard: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/rental-requests/${requestId}/cancel`, {
+      const response = await fetch(`${API_URL}/api/v1/rental-requests/${requestId}/cancel`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -146,7 +147,7 @@ const CustomerDashboard: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/rental-requests/${rentalId}`, {
+      const response = await fetch(`${API_URL}/api/v1/rental-requests/${rentalId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

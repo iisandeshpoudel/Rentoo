@@ -48,7 +48,7 @@ interface Stats {
 }
 
 const AdminDashboard = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'users' | 'products' | 'rentals'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,17 +65,22 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token || !user || user.role !== 'admin') {
+        setError('Unauthorized access. Please login as an admin.');
+        return;
+      }
+
       const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       };
 
       // Fetch all data in parallel
       const [usersResponse, productsResponse, rentalsResponse, statsResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/users', { headers }),
-        fetch('http://localhost:5000/api/admin/products', { headers }),
-        fetch('http://localhost:5000/api/admin/rentals', { headers }),
-        fetch('http://localhost:5000/api/admin/stats', { headers })
+        fetch('http://localhost:5000/api/v1/admin/users', { headers }),
+        fetch('http://localhost:5000/api/v1/admin/products', { headers }),
+        fetch('http://localhost:5000/api/v1/admin/rentals', { headers }),
+        fetch('http://localhost:5000/api/v1/admin/stats', { headers })
       ]);
 
       // Check for errors
@@ -105,14 +110,14 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !authLoading) {
       fetchData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+      const response = await fetch(`http://localhost:5000/api/v1/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -132,7 +137,7 @@ const AdminDashboard = () => {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/products/${productId}`, {
+      const response = await fetch(`http://localhost:5000/api/v1/admin/products/${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -170,7 +175,7 @@ const AdminDashboard = () => {
     rental.status.toLowerCase().includes(rentalSearch.toLowerCase())
   );
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-100 border-t-purple-600"></div>
@@ -185,7 +190,7 @@ const AdminDashboard = () => {
         <div className="bg-red-50 border-l-4 border-red-400 p-4 w-full max-w-2xl">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>

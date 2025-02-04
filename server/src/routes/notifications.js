@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const Notification = require('../models/Notification');
 
 // Get user's notifications
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const notifications = await Notification.find({ 
       recipient: req.user._id,
@@ -19,12 +19,13 @@ router.get('/', auth, async (req, res) => {
 
     res.json({ notifications, unreadCount });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get notifications error:', error);
+    res.status(500).json({ message: 'Error getting notifications' });
   }
 });
 
 // Mark notification as read
-router.put('/:id/read', auth, async (req, res) => {
+router.put('/:id/read', protect, async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, recipient: req.user._id },
@@ -38,12 +39,13 @@ router.put('/:id/read', auth, async (req, res) => {
 
     res.json(notification);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Mark notification read error:', error);
+    res.status(500).json({ message: 'Error marking notification as read' });
   }
 });
 
 // Mark all notifications as read
-router.put('/read-all', auth, async (req, res) => {
+router.put('/read-all', protect, async (req, res) => {
   try {
     await Notification.updateMany(
       { recipient: req.user._id, read: false },
@@ -52,7 +54,8 @@ router.put('/read-all', auth, async (req, res) => {
 
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Mark all notifications read error:', error);
+    res.status(500).json({ message: 'Error marking notifications as read' });
   }
 });
 

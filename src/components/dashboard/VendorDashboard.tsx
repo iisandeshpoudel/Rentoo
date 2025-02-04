@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import VendorChatSection from '../chat/VendorChatSection';
 
 interface Product {
   _id: string;
@@ -21,7 +23,8 @@ interface Product {
 interface RentalRequest {
   _id: string;
   product: Product;
-  customer: {
+  renter: {
+    _id: string;
     name: string;
     email: string;
   };
@@ -40,7 +43,7 @@ interface ApiRentalRequest extends Omit<RentalRequest, 'product'> {
 const API_URL = 'http://localhost:5000';
 
 const VendorDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'products' | 'requests'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'requests' | 'chats'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [rentalRequests, setRentalRequests] = useState<RentalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,11 @@ const VendorDashboard: React.FC = () => {
   const [requestSearch, setRequestSearch] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'vendor') {
+    return <div>Access denied. This page is only for vendors.</div>;
+  }
 
   const handleEdit = (productId: string) => {
     navigate(`/products/edit/${productId}`);
@@ -60,7 +68,7 @@ const VendorDashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/products/${productId}`, {
+      const response = await fetch(`${API_URL}/api/v1/products/${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -88,12 +96,12 @@ const VendorDashboard: React.FC = () => {
         }
 
         const [productsRes, requestsRes] = await Promise.all([
-          fetch(`${API_URL}/api/products/vendor/products`, {
+          fetch(`${API_URL}/api/v1/products/vendor/products`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           }),
-          fetch(`${API_URL}/api/rental-requests/vendor/rental-requests`, {
+          fetch(`${API_URL}/api/v1/rental-requests/vendor`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -101,7 +109,14 @@ const VendorDashboard: React.FC = () => {
         ]);
 
         if (!productsRes.ok || !requestsRes.ok) {
-          throw new Error('Failed to fetch data');
+          const errorMessages = [];
+          if (!productsRes.ok) {
+            errorMessages.push(`Failed to fetch products: ${productsRes.statusText}`);
+          }
+          if (!requestsRes.ok) {
+            errorMessages.push(`Failed to fetch rental requests: ${requestsRes.statusText}`);
+          }
+          throw new Error(errorMessages.join('. '));
         }
 
         const [productsData, requestsData] = await Promise.all([
@@ -151,7 +166,7 @@ const VendorDashboard: React.FC = () => {
         )
       );
 
-      const response = await fetch(`${API_URL}/api/rental-requests/${requestId}/status`, {
+      const response = await fetch(`${API_URL}/api/v1/rental-requests/${requestId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -204,7 +219,7 @@ const VendorDashboard: React.FC = () => {
         )
       );
 
-      const response = await fetch(`${API_URL}/api/products/${productId}`, {
+      const response = await fetch(`${API_URL}/api/v1/products/${productId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -259,12 +274,12 @@ const VendorDashboard: React.FC = () => {
   );
 
   const filteredRequests = rentalRequests.filter(request => {
-    if (!request?.product || !request?.customer) return false;
+    if (!request?.product || !request?.renter) return false;
     
     const searchTerm = requestSearch.toLowerCase();
     return (
       request.product.name.toLowerCase().includes(searchTerm) ||
-      request.customer.name.toLowerCase().includes(searchTerm) ||
+      request.renter.name.toLowerCase().includes(searchTerm) ||
       request.status.toLowerCase().includes(searchTerm)
     );
   });
@@ -276,27 +291,21 @@ const VendorDashboard: React.FC = () => {
           <div className="flex gap-3">
             <button
               onClick={() => handleUpdateRequestStatus(request._id, 'approved')}
-              className="group relative px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
             >
-              <span className="relative z-10 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Accept
-              </span>
-              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Accept
             </button>
             <button
               onClick={() => handleUpdateRequestStatus(request._id, 'rejected')}
-              className="group relative px-5 py-2.5 text-sm font-medium bg-red-500 text-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
             >
-              <span className="relative z-10 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Reject
-              </span>
-              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Reject
             </button>
           </div>
         );
@@ -455,6 +464,16 @@ const VendorDashboard: React.FC = () => {
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium transition-colors duration-200`}
           >
             Rental Requests
+          </button>
+          <button
+            onClick={() => setActiveTab('chats')}
+            className={`${
+              activeTab === 'chats'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium transition-colors duration-200`}
+          >
+            Customer Chats
           </button>
         </nav>
       </div>
@@ -672,20 +691,20 @@ const VendorDashboard: React.FC = () => {
                           <div className="h-10 w-10 flex-shrink-0">
                             <img
                               className="h-10 w-10 rounded-full object-cover"
-                              src={getProductImage(request.product)}
+                              src={request.product?.images?.[0] || '/placeholder.jpg'}
                               alt=""
                             />
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {request.product?.name || 'Product Unavailable'}
+                              {request.product?.name || 'Product Deleted'}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{request.customer?.name || 'Unknown Customer'}</div>
-                        <div className="text-sm text-gray-500">{request.customer?.email || 'No email available'}</div>
+                        <div className="text-sm text-gray-900">{request.renter.name}</div>
+                        <div className="text-sm text-gray-500">{request.renter.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -710,6 +729,11 @@ const VendorDashboard: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Chats Tab */}
+      {activeTab === 'chats' && (
+        <VendorChatSection />
       )}
     </div>
   );

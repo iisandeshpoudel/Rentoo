@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const Review = require('../models/Review');
 const Product = require('../models/Product');
-const auth = require('../middleware/auth');
 
 // Helper function to update product review stats
 async function updateProductReviewStats(productId) {
@@ -29,20 +29,29 @@ router.get('/product/:productId', async (req, res) => {
       .sort({ createdAt: -1 });
 
     const product = await Product.findById(productId).select('reviewStats');
-    
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
     res.json({
       reviews,
       stats: product.reviewStats
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get reviews error:', error);
+    res.status(500).json({ message: 'Error getting reviews' });
   }
 });
 
 // Add a review
-router.post('/', auth, async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
     const { productId, rating, comment } = req.body;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
 
     // Check if product exists
     const product = await Product.findById(productId);
@@ -53,7 +62,7 @@ router.post('/', auth, async (req, res) => {
     // Check if user has already reviewed this product
     const existingReview = await Review.findOne({
       product: productId,
-      user: req.user._id || req.user.id
+      user: req.user._id
     });
 
     if (existingReview) {
@@ -62,31 +71,36 @@ router.post('/', auth, async (req, res) => {
 
     const review = new Review({
       product: productId,
-      user: req.user._id || req.user.id,
+      user: req.user._id,
       rating,
-      comment
+      comment: comment?.trim()
     });
 
     await review.save();
     const stats = await updateProductReviewStats(productId);
 
-    const populatedReview = await Review.findById(review._id)
-      .populate('user', 'name')
-      .lean();
+    await review.populate('user', 'name');
 
     res.status(201).json({
-      review: populatedReview,
+      review,
       stats
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Create review error:', error);
+    res.status(500).json({ message: 'Error creating review' });
   }
 });
 
 // Edit a review
-router.put('/:reviewId', auth, async (req, res) => {
+router.put('/:reviewId', protect, async (req, res) => {
   try {
     const { rating, comment } = req.body;
+
+    // Validate rating
+    if (rating && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
     const review = await Review.findById(req.params.reviewId);
     
     if (!review) {
@@ -97,26 +111,26 @@ router.put('/:reviewId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to edit this review' });
     }
 
-    review.rating = rating;
-    review.comment = comment;
+    if (rating) review.rating = rating;
+    if (comment !== undefined) review.comment = comment.trim();
     await review.save();
 
     const stats = await updateProductReviewStats(review.product);
-    const updatedReview = await Review.findById(review._id)
-      .populate('user', 'name')
-      .lean();
+
+    await review.populate('user', 'name');
 
     res.json({
-      review: updatedReview,
+      review,
       stats
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Update review error:', error);
+    res.status(500).json({ message: 'Error updating review' });
   }
 });
 
 // Delete a review
-router.delete('/:reviewId', auth, async (req, res) => {
+router.delete('/:reviewId', protect, async (req, res) => {
   try {
     const review = await Review.findById(req.params.reviewId);
     
@@ -129,7 +143,8 @@ router.delete('/:reviewId', auth, async (req, res) => {
     }
 
     const productId = review.product;
-    await Review.deleteOne({ _id: req.params.reviewId });
+    await review.deleteOne();
+
     const stats = await updateProductReviewStats(productId);
 
     res.json({
@@ -138,7 +153,7 @@ router.delete('/:reviewId', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete review error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error deleting review' });
   }
 });
 

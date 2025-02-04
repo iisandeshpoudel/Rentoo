@@ -149,7 +149,7 @@ const ProductForm: React.FC = () => {
 
       console.log('Sending form data with', selectedFiles.length, 'images');
 
-      const response = await fetch('http://localhost:5000/api/products', {
+      const response = await fetch('http://localhost:5000/api/v1/products', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -10,69 +10,33 @@ interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
-  relatedRental?: string;
-  relatedProduct?: string;
+  relatedData?: {
+    senderId?: string;
+    messageId?: string;
+    [key: string]: any;
+  };
 }
 
 const NotificationCenter = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const navigate = useNavigate();
-
-  const handleNotificationClick = async (notification: Notification) => {
-    await markAsRead(notification._id);
-    
-    // Navigate based on notification type
-    switch (notification.type) {
-      case 'RENTAL_REQUEST':
-      case 'RENTAL_APPROVED':
-      case 'RENTAL_REJECTED':
-        navigate('/dashboard?tab=requests');
-        break;
-      case 'PAYMENT_RECEIVED':
-        navigate('/dashboard?tab=requests');
-        break;
-      case 'PRODUCT_RETURNED':
-        navigate(`/products/${notification.relatedProduct}`);
-        break;
-      default:
-        // Default to dashboard if no specific route
-        navigate('/dashboard');
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
-  };
+  const { notifications, unreadCount, navigateToNotification, markAllAsRead } = useNotifications();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'NEW_MESSAGE':
+        return (
+          <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        );
       case 'RENTAL_REQUEST':
         return (
-          <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        );
-      case 'RENTAL_APPROVED':
-        return (
-          <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'RENTAL_REJECTED':
-        return (
-          <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'PAYMENT_RECEIVED':
-        return (
-          <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
         );
       default:
         return (
-          <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
         );
@@ -103,7 +67,7 @@ const NotificationCenter = () => {
           <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
           {notifications.length > 0 && (
             <button
-              onClick={handleMarkAllAsRead}
+              onClick={markAllAsRead}
               className="text-sm text-primary-600 hover:text-primary-800"
             >
               Mark all as read
@@ -127,7 +91,7 @@ const NotificationCenter = () => {
                       } px-4 py-3 cursor-pointer ${
                         !notification.read ? 'bg-blue-50' : ''
                       }`}
-                      onClick={() => handleNotificationClick(notification)}
+                      onClick={() => navigateToNotification(notification)}
                     >
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-1">
@@ -146,7 +110,7 @@ const NotificationCenter = () => {
                             {notification.message}
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
-                            Click to view details
+                            {notification.type === 'NEW_MESSAGE' ? 'Click to view chat' : 'Click to view details'}
                           </p>
                         </div>
                       </div>

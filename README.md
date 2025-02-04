@@ -1,532 +1,428 @@
 # Rentoo
 ### Rental Marketplace
 
-A modern web application for renting and listing items, built with React, TypeScript, and Tailwind CSS.
+A modern web application for renting and listing items, built with React, TypeScript, and Node.js. The platform connects vendors with customers, enabling easy rental transactions and communication.
 
-## Features
+## Features & Implementation Details
 
 ### Authentication & Authorization
-- Secure user authentication with JWT
-- Role-based access control (Admin, Vendor, Customer)
-- Protected routes based on user roles
-- Persistent login state
-- Token-based session management
-- Auto-logout on token expiration
-- Secure password hashing with bcrypt
-- Cross-site request forgery (CSRF) protection
+- **JWT-based Authentication**
+  - Token generation with 24-hour expiry
+  - Secure password hashing using bcrypt
+  - Token validation middleware
+  - Auto token refresh mechanism
+- **Role-based Access Control**
+  - Three roles: Admin, Customer, and Vendor
+  - Protected route middleware
+  - Role-specific route guards
+- **API Endpoints**:
+  ```
+  POST   /api/v1/auth/register    # User registration
+  POST   /api/v1/auth/login       # User login
+  GET    /api/v1/auth/me         # Get current user profile
+  ```
+
+### Admin Management
+- **Admin User Creation**
+  ```bash
+  # Create admin user with default credentials
+  cd server
+  node src/createAdmin.js
+  ```
+  Default admin credentials:
+  - Email: admin@rentoo.com
+  - Password: admin123
+  
+- **Admin Dashboard Features**
+  - User management (view, delete users)
+  - Product oversight
+  - Rental request monitoring
+  - System statistics
+  
+- **Admin API Endpoints**:
+  ```
+  GET    /api/admin/stats        # Get dashboard statistics
+  GET    /api/admin/users        # List all users
+  PATCH  /api/admin/users/:id    # Update user role
+  DELETE /api/admin/users/:id    # Delete user
+  GET    /api/admin/products     # List all products
+  GET    /api/admin/rentals      # List all rentals
+  ```
 
 ### User Management
-- User registration with role selection
-- Profile management
-- Admin dashboard for user oversight
-- User role management
-- User deletion with cascade handling
-- User statistics and analytics
-- Role-specific permissions
-- User activity tracking
+- **User Registration**
+  - Role selection (Customer/Vendor)
+  - Email validation
+  - Password strength requirements
+- **Profile Management**
+  - Name and password updates
+  - Contact information management
+- **API Endpoints**:
+  ```
+  GET    /api/users/profile      # Get user profile
+  PUT    /api/users/profile      # Update user profile
+  PATCH  /api/users/password     # Update password
+  ```
 
 ### Product Management
-- Product listing with detailed information
-- Image upload support (multiple images)
-- Product categorization
-- Condition and availability status
-- Location-based listings
-- Pricing management (daily rates)
-- Product availability toggle
-- Product deletion protection
-- Image optimization and resizing
-- Product history tracking
-- Vendor-specific product management
-- Product snapshots for rentals
+- **Product Listing**
+  - Multiple image upload (max 5 images)
+  - Image validation and optimization
+  - Rich text description
+  - Location-based listing
+- **Vendor Controls**
+  - Product availability toggle
+  - Price management
+  - Product deletion with rental history preservation
+- **API Endpoints**:
+  ```
+  GET    /api/v1/products              # List all products
+  POST   /api/v1/products              # Create product (vendor)
+  GET    /api/v1/products/:id          # Get product details
+  PUT    /api/v1/products/:id          # Update product (vendor)
+  DELETE /api/v1/products/:id          # Delete product (vendor)
+  GET    /api/v1/products/vendor       # Get vendor's products
+  ```
 
-### Search & Filter Functionality
-- Global search in navigation bar
-- Real-time search filtering
-- Search across multiple fields:
-  - Product names
-  - Categories
-  - Vendor names
-  - Locations
-  - Descriptions
-  - Price ranges
+### Search & Filter System
+- **Real-time Search**
+  - Multi-field search implementation
+  - Debounced search input
+  - Client-side filtering
+- **Advanced Filtering**
+  - Category filtering
+  - Price range filtering
+  - Location filtering
   - Availability status
-- Role-specific search interfaces:
-  - Customer: Products and rentals
-  - Vendor: Products and rental requests
-  - Admin: Users, products, and rentals
-- Category-based filtering
-- Price range filtering
-- Location-based filtering
-- Availability filtering
-- Date range filtering
-- Sort options:
-  - Price (low to high/high to low)
-  - Date added
-  - Rating
+- **Sort Options**
+  - Price sorting (asc/desc)
+  - Date added sorting
+  - Relevance sorting
 
 ### Rental System
-- Rental request management
-- Date-based availability
-- Pricing calculation
-- Status tracking (pending, approved, rejected, completed, cancelled)
-- Rental history
-- Automatic availability updates
-- Rental request validation
-- Date conflict prevention
-- Rental duration limits
-- Price calculation based on duration
-- Multiple rental statuses:
-  - Pending
-  - Approved
-  - Rejected
-  - Completed
-  - Cancelled
-  - Overdue
-- Rental request notifications
-- Rental analytics
-- Rental history export
+- **Rental Request Management**
+  ```
+  POST   /api/v1/rental-requests           # Create rental request
+  GET    /api/v1/rental-requests/customer  # Get customer requests
+  GET    /api/v1/rental-requests/vendor    # Get vendor requests
+  PATCH  /api/v1/rental-requests/:id/status # Update request status
+  ```
+- **Date Management**
+  - Availability checking
+  - Date conflict prevention
+  - Automatic price calculation
+- **Status Workflow**
+  1. Pending (initial state)
+  2. Approved (vendor action)
+  3. Rejected (vendor action)
+  4. Completed (automatic)
+  5. Cancelled (customer action)
+- **Payment Integration**
+  ```
+  PATCH  /api/v1/rental-requests/:id/paid  # Mark rental as paid
+  ```
 
-### Dashboard Interfaces
-1. Admin Dashboard:
-   - User management
-     - View all users
-     - Delete users
-     - Update user roles
-     - User statistics
-   - Product oversight
-     - View all products
-     - Delete products
-     - Product statistics
-   - Rental monitoring
-     - View all rentals
-     - Rental statistics
-   - Statistical overview
-     - Total users by role
-     - Active rentals
-     - Total products
-     - System metrics
-   - Search and filter capabilities
-     - User search
-     - Product search
-     - Rental search
-   - Data visualization
-     - User growth charts
-     - Rental trends
-     - Product statistics
-
-2. Vendor Dashboard:
-   - Product management
-     - Add products
-     - Edit products
-     - Delete products
-     - Product statistics
-   - Rental request handling
-     - View requests
-     - Approve/reject requests
-     - Complete rentals
-     - Request history
-   - Availability toggle
-     - Quick status updates
-     - Batch updates
-   - Search functionality
-     - Product search
-     - Request search
-   - Analytics
-     - Product performance
-     - Rental statistics
-   - Notification center
-
-3. Customer Dashboard:
-   - Rental request tracking
-     - Active rentals
-     - Request history
-     - Request status
-   - Search functionality
-     - Product search
-     - Rental history search
-   - Rental history
-   - Notification preferences
-
-### UI/UX Features
-- Responsive design
-- Modern, clean interface
-- Real-time updates
-- Loading states
-- Error handling
-- Toast notifications
-- Modal confirmations
-- Professional search interface
-- Intuitive navigation
-- Smooth transitions
-- Skeleton loading
-- Infinite scroll
-- Lazy loading
-- Image optimization
-- Form validation
-- Error messages
-- Success feedback
-- Interactive elements
-- Accessibility features
-- Mobile-first design
-- Dark mode support
-- Custom scrollbars
-- Responsive tables
-- Animated components
-- Context menus
-- Tooltips
-- Progress indicators
-- Breadcrumb navigation
-- Quick actions
+### Chat System
+- **Real-time Communication**
+  - Polling-based updates
+    - Messages: 3-second interval
+    - Chat list: 10-30 second interval
+  - Optimistic UI updates
+- **Message Management**
+  - History preservation
+  - Read status tracking
+  - Last seen timestamps
+- **API Endpoints**:
+  ```
+  GET    /api/v1/chat/users           # Get chat users
+  GET    /api/v1/chat/messages/:userId # Get messages with user
+  POST   /api/v1/chat/send            # Send message
+  GET    /api/v1/chat/unread          # Get unread count
+  ```
 
 ### Notification System
-- Real-time notification updates
-- Unread count badge
-- Mark as read functionality
-- Notification types:
-  - Rental requests
-  - Request approvals/rejections
-  - Return notifications
-  - System updates
-  - Product updates
-- Notification preferences
-- Notification history
-- Filter options
-- Sort options
-- Search functionality
-- Notification categories
-- Priority levels
-- Read/Unread status
-- Clear all option
-- Paginated notification list
-- Notification center in navigation bar
-- Quick actions from notifications
-- Time-based filtering
-- Category-based filtering
-- Notification settings
+- **Real-time Notifications**
+  - Rental request updates
+  - Chat messages
+  - Payment confirmations
+- **API Endpoints**:
+  ```
+  GET    /api/notifications           # Get notifications
+  PATCH  /api/notifications/:id/read  # Mark as read
+  PATCH  /api/notifications/read-all  # Mark all as read
+  GET    /api/notifications/unread-count # Get unread count
+  ```
 
-## Technical Stack
+## Detailed Functionality Breakdown
 
-### Frontend Libraries and Dependencies
+### Admin Functionality
+1. **User Management**
+   - View all users in the system
+   - Delete user accounts
+   - Update user roles
+   - Monitor user activities
+   - View user statistics
 
-#### Core Libraries
-- **React (^18.2.0)**
-  - Core library for building user interfaces
-  - Component-based architecture
-  - Virtual DOM for efficient rendering
-  - Hooks for state management and side effects
+2. **Product Management**
+   - View all products in the system
+   - Delete inappropriate products
+   - Monitor product listings
+   - View product statistics
 
-- **TypeScript (^5.0.0)**
-  - Static typing for JavaScript
-  - Enhanced IDE support and code completion
-  - Early error detection
-  - Better code documentation
+3. **Rental Management**
+   - View all rental transactions
+   - Monitor rental status changes
+   - Access rental statistics
+   - View rental history
 
-- **React Router DOM (^6.4.0)**
-  - Client-side routing
-  - Navigation management
-  - Route protection
-  - Dynamic route parameters
-  - History management
+4. **System Statistics**
+   - Total user count by role
+   - Total product listings
+   - Total rental transactions
+   - Recent activity monitoring
+   - Revenue statistics
 
-#### UI and Styling
-- **Tailwind CSS (^3.3.0)**
-  - Utility-first CSS framework
-  - Responsive design utilities
-  - Custom design system
-  - JIT (Just-In-Time) compilation
-  - Dark mode support
+5. **Admin Dashboard**
+   - Real-time statistics overview
+   - User management interface
+   - Product management interface
+   - Rental management interface
+   - Activity monitoring tools
 
-- **@headlessui/react (^1.7.0)**
-  - Unstyled, accessible UI components
-  - Dropdowns
-  - Modals
-  - Menus
-  - Transitions
-  - ARIA compliance
+### Vendor Functionality
+1. **Product Management**
+   - Create new product listings
+   - Upload multiple product images (up to 5)
+   - Edit product details:
+     - Name and description
+     - Category selection
+     - Price setting (daily rate)
+     - Location information
+     - Availability status
+   - Delete own products
+   - View product statistics
 
-- **@heroicons/react (^2.0.0)**
-  - SVG icon components
-  - Multiple styles (outline, solid)
-  - Customizable sizes and colors
-  - Optimized for React
+2. **Rental Management**
+   - View incoming rental requests
+   - Accept/Reject rental requests
+   - View rental history
+   - Monitor active rentals
+   - Track rental status changes
+   - View rental statistics
 
-#### Form and Data Handling
-- **react-hook-form (^7.45.0)**
-  - Form state management
-  - Form validation
-  - Error handling
-  - Performance optimization
-  - TypeScript support
+3. **Communication**
+   - Chat with customers
+   - View chat history
+   - Receive real-time messages
+   - Get unread message notifications
+   - Send/receive rental-related messages
 
-- **yup (^1.2.0)**
-  - Schema validation
-  - Form validation rules
-  - Type coercion
-  - Custom validation messages
+4. **Vendor Dashboard**
+   - Product listing overview
+   - Rental request management
+   - Revenue statistics
+   - Customer communication center
+   - Activity notifications
 
-#### Date and Time
-- **date-fns (^2.30.0)**
-  - Date manipulation
-  - Date formatting
-  - Time zone handling
-  - Relative time calculations
+5. **Profile Management**
+   - Update personal information
+   - Manage contact details
+   - Update password
+   - View account statistics
 
-#### HTTP Client
-- **axios (^1.4.0)**
-  - Promise-based HTTP client
-  - Request/response interceptors
-  - Automatic transforms for JSON data
-  - Client-side request cancellation
-  - Progress monitoring for uploads
+### Customer Functionality
+1. **Product Browsing**
+   - View all available products
+   - Search products by:
+     - Name
+     - Category
+     - Location
+     - Price range
+     - Availability
+   - Filter and sort products
+   - View detailed product information
+   - View vendor information
 
-### Backend Libraries and Dependencies
+2. **Rental Management**
+   - Send rental requests
+   - View rental request status
+   - Cancel rental requests
+   - View rental history
+   - Track active rentals
+   - Make rental payments
 
-#### Core Framework
-- **Node.js (^16.0.0)**
-  - JavaScript runtime
-  - Event-driven architecture
-  - Non-blocking I/O
-  - NPM package management
+3. **Communication**
+   - Chat with vendors
+   - View chat history
+   - Send/receive messages
+   - Get message notifications
+   - Discuss rental details
 
-- **Express (^4.18.0)**
-  - Web application framework
-  - Routing
-  - Middleware support
-  - Static file serving
-  - Error handling
+4. **Customer Dashboard**
+   - View active rentals
+   - Track rental history
+   - Access chat messages
+   - View notifications
+   - Manage profile
 
-#### Database
-- **MongoDB (^6.0.0)**
-  - NoSQL database
-  - Document-oriented storage
-  - Scalable architecture
-  - Rich query language
+5. **Profile Management**
+   - Update personal information
+   - Manage contact details
+   - Change password
+   - View rental history
 
-- **Mongoose (^7.4.0)**
-  - MongoDB object modeling
-  - Schema definition
+### Common Features
+1. **Authentication**
+   - Register new account
+   - Login with email/password
+   - Automatic token refresh
+   - Password reset
+   - Session management
+
+2. **Notification System**
+   - Real-time notifications
+   - Email notifications
+   - System alerts
+   - Status updates
+   - Message notifications
+
+3. **Search & Filter**
+   - Global search functionality
+   - Advanced filtering options
+   - Sort by various criteria
+   - Location-based search
+   - Category filtering
+
+4. **User Interface**
+   - Responsive design
+   - Mobile-friendly layout
+   - Intuitive navigation
+   - Real-time updates
+   - Loading states
+   - Error handling
+   - Success messages
+
+5. **Security Features**
+   - JWT authentication
+   - Role-based access control
+   - Secure password handling
+   - Protected routes
+   - Input validation
+   - XSS protection
+   - CORS configuration
+
+## Technical Implementation
+
+### Frontend Architecture
+- **React 18 with TypeScript**
+  - Functional components with hooks
+  - Custom hooks for business logic
+  - TypeScript interfaces for type safety
+- **State Management**
+  - Context API for global state
+    - AuthContext for user authentication
+    - NotificationContext for notifications
+    - RentalContext for rental management
+- **Routing**
+  - React Router v6
+  - Protected route components
+  - Role-based access control
+- **UI Components**
+  - Tailwind CSS for styling
+  - Responsive design
+  - Custom UI components
+- **API Integration**
+  - Axios for HTTP requests
+  - Request interceptors for token management
+  - Error handling middleware
+
+### Backend Architecture
+- **Node.js with Express**
+  - RESTful API design
+  - Middleware-based architecture
+  - Error handling middleware
+- **Database**
+  - MongoDB with Mongoose ODM
+  - Optimized indexes
   - Data validation
-  - Query building
-  - Middleware support
-  - TypeScript support
-
-#### Authentication and Security
-- **jsonwebtoken (^9.0.0)**
-  - JWT token generation
-  - Token verification
-  - Payload encryption
-  - Expiration handling
-
-- **bcryptjs (^2.4.3)**
+- **File Upload**
+  - Multer for file handling
+  - Image validation
+  - File size limits
+- **Security**
+  - JWT authentication
   - Password hashing
-  - Salt generation
-  - Secure password comparison
+  - Request validation
+  - CORS configuration
 
-- **cors (^2.8.5)**
-  - Cross-Origin Resource Sharing
-  - Preflight request handling
-  - Security headers
-  - Origin whitelisting
-
-#### File Upload and Processing
-- **Multer (^1.4.5)**
-  - Multipart form data handling
-  - File upload middleware
-  - File filtering
-  - Storage engine customization
-
-- **Sharp (^0.32.0)**
-  - Image processing
-  - Resize and crop
-  - Format conversion
-  - Metadata handling
-
-## API Endpoints
-
-### Authentication
-- POST `/api/auth/register` - User registration
-- POST `/api/auth/login` - User login
-- GET `/api/auth/me` - Get current user
-- GET `/api/auth/profile` - Get user profile
-- PUT `/api/auth/profile` - Update user profile
-- POST `/api/auth/logout` - User logout
-- POST `/api/auth/refresh-token` - Refresh JWT token
-
-### Products
-- GET `/api/products` - Get all products with filters
-- GET `/api/products/:id` - Get product details
-- GET `/api/vendor/products` - Get vendor's products
-- POST `/api/products` - Create new product (Vendor)
-- PATCH `/api/products/:id` - Update product (Vendor)
-- DELETE `/api/products/:id` - Delete product (Vendor/Admin)
-- GET `/api/products/:id/snapshot` - Get product snapshot
-- POST `/api/products/:id/images` - Upload product images
-- DELETE `/api/products/:id/images/:imageId` - Delete product image
-- PATCH `/api/products/:id/availability` - Toggle availability
-- GET `/api/products/categories` - Get product categories
-- GET `/api/products/search` - Search products
-- GET `/api/products/trending` - Get trending products
-- GET `/api/products/recent` - Get recently added products
-- GET `/api/products/nearby` - Get nearby products
-
-### Rentals
-- GET `/api/rental-requests` - Get user's rental requests
-- GET `/api/rental-requests/vendor` - Get vendor's rental requests
-- POST `/api/rental-requests` - Create rental request
-- PATCH `/api/rental-requests/:id/status` - Update request status
-- DELETE `/api/rental-requests/:id` - Cancel request
-- GET `/api/rental-requests/deleted-products` - Get requests with deleted products
-- GET `/api/rental-requests/:id/product-history` - Get product snapshot
-- GET `/api/rental-requests/stats` - Get rental statistics
-- GET `/api/rental-requests/calendar` - Get rental calendar
-
-### Notifications
-- GET `/api/notifications` - Get user's notifications
-- GET `/api/notifications/unread-count` - Get unread count
-- PATCH `/api/notifications/:id/read` - Mark as read
-- PATCH `/api/notifications/mark-all-read` - Mark all as read
-- DELETE `/api/notifications/:id` - Delete notification
-- GET `/api/notifications/preferences` - Get notification preferences
-- PUT `/api/notifications/preferences` - Update preferences
-- GET `/api/notifications/categories` - Get notification categories
-- GET `/api/notifications/history` - Get notification history
-
-### Admin
-- GET `/api/admin/users` - Get all users
-- GET `/api/admin/stats` - Get system statistics
-- PATCH `/api/admin/users/:id/role` - Update user role
-- DELETE `/api/admin/users/:id` - Delete user
-- GET `/api/admin/deleted-products` - Get deleted products
-- GET `/api/admin/rental-stats` - Get rental statistics
-- GET `/api/admin/logs` - Get system logs
-- GET `/api/admin/activity` - Get user activity
-
-## Recent Updates
-
-### Review System Improvements
-- Added complete CRUD operations for reviews
-  - Create: Users can submit reviews with ratings (1-5) and comments
-  - Read: View all reviews for a product with pagination
-  - Update: Users can edit their own reviews
-  - Delete: Users can delete their own reviews
-- Added review statistics
-  - Average rating calculation
-  - Total reviews count
-  - Real-time stats updates when reviews are modified
-- Implemented authorization checks
-  - Only authenticated users can submit reviews
-  - Users can only edit/delete their own reviews
-  - One review per user per product
-
-### API Endpoint Improvements
-- Fixed routing issues for better organization
-  - Products: `/api/products`
-  - Reviews: `/api/reviews`
-  - Auth: `/api/auth`
-  - Notifications: `/api/notifications`
-- Added proper CORS configuration
-  - Enabled credentials
-  - Configured allowed methods and headers
-  - Set proper origin handling
-
-### Notification System
-- Added notification endpoints
-  - GET `/api/notifications`: Fetch notifications with pagination
-  - PUT `/api/notifications/:id/read`: Mark single notification as read
-  - PUT `/api/notifications/read-all`: Mark all notifications as read
-- Notification features:
-  - Pagination support
-  - Real-time updates
-  - Different notification types (rental requests, approvals, etc.)
-  - Unread/read status tracking
-
-### Authentication Improvements
-- Enhanced user authentication
-  - Added `/api/auth/me` endpoint for current user info
-  - Improved token handling
-  - Better error handling for auth failures
-
-### UI/UX Improvements
-- Review Section
-  - Star rating display
-  - Edit/Delete buttons for user's own reviews
-  - Real-time updates after actions
-  - Validation for review submissions
-  - Error handling and user feedback
-- Form Validations
-  - Comment length restrictions (10-500 characters)
-  - Rating validation (1-5 stars)
-  - Required field handling
-
-### Security Enhancements
-- Added proper authorization middleware
-- Implemented role-based access control
-- Secured API endpoints with proper authentication checks
-- Added input validation and sanitization
-
-### Error Handling
-- Improved error messages and handling
-- Added proper HTTP status codes
-- Better logging for debugging
-- User-friendly error displays
-
-## Getting Started
+## Development Setup
 
 ### Prerequisites
-- Node.js (>= 16.0.0)
-- npm (>= 8.0.0) or yarn (>= 1.22.0)
-- MongoDB (>= 6.0.0)
-- Git
+- Node.js (v14 or higher)
+- MongoDB (v4.4 or higher)
+- npm or yarn
 
-### Installation
+### Frontend Setup
+1. Install dependencies:
+   ```bash
+   cd Rentoo
+   npm install
+   ```
 
-1. Clone the repository:
-```bash
-git clone [repository-url]
-cd Rentoo
-```
+2. Environment configuration:
+   Create `.env` file:
+   ```
+   VITE_API_URL=http://localhost:5000
+   VITE_UPLOAD_URL=http://localhost:5000/uploads
+   ```
 
-2. Install dependencies for both frontend and backend:
-root directory --> frontend
-server directory --> backend
-   
-```bash
-# Install frontend dependencies (root directory)
-npm install
+3. Start development server:
+   ```bash
+   npm run dev
+   ```
 
-# Install backend dependencies (server directory)
-cd server
-npm install
-```
+### Backend Setup
+1. Install dependencies:
+   ```bash
+   cd server
+   npm install
+   ```
 
-3. Environment Setup
+2. Environment configuration:
+   Create `.env` file:
+   ```
+   MONGODB_URI=mongodb://localhost:27017/rentoo
+   JWT_SECRET=your_jwt_secret
+   PORT=5000
+   UPLOAD_DIR=uploads
+   ```
 
-#### Frontend Environment (.env)
-```env
-VITE_API_URL=http://localhost:5000
-VITE_UPLOAD_URL=http://localhost:5000/uploads
-```
+3. Start development server:
+   ```bash
+   npm run dev
+   ```
 
-#### Backend Environment (.env)
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/Rentoo
-JWT_SECRET=Rentoo
-UPLOAD_DIR=uploads
-```
+### Database Setup
+1. Start MongoDB service
+2. Create database:
+   ```bash
+   mongosh
+   use rentoo
+   ```
 
-4. Start Development Servers
-```bash
-# Start backend server (from server directory)
-npm run dev
+3. Create indexes:
+   ```javascript
+   db.products.createIndex({ name: "text", description: "text" });
+   db.products.createIndex({ vendor: 1 });
+   db.rentalrequests.createIndex({ product: 1, status: 1 });
+   db.messages.createIndex({ sender: 1, receiver: 1 });
+   ```
 
-# Start frontend server (from root directory)
-cd server
-npm run dev
-```
+## Contributing
 
-### Default Users
+Please read our contributing guidelines before submitting pull requests.
 
-#### Admin User
-- Email: admin@example.com
-- Password: admin123
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+

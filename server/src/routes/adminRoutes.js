@@ -1,133 +1,218 @@
 const express = require('express');
 const router = express.Router();
+const { protect, isAdmin } = require('../middleware/auth');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const RentalRequest = require('../models/RentalRequest');
-const auth = require('../middleware/auth');
-const checkRole = require('../middleware/checkRole');
 
-// Get all users
-router.get('/users', auth, checkRole(['admin']), async (req, res) => {
+// Middleware to ensure only admins can access these routes
+router.use(protect);
+router.use(isAdmin);
+
+// Get dashboard statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const [users, products, rentals] = await Promise.all([
+      User.find(),
+      Product.find(),
+      RentalRequest.find()
+    ]);
+
+    // Calculate user statistics
+    const usersByRole = users.reduce((acc, user) => {
+      acc[user.role] = (acc[user.role] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Calculate rental statistics
+    const rentalsByStatus = rentals.reduce((acc, rental) => {
+      acc[rental.status] = (acc[rental.status] || 0) + 1;
+      return acc;
+    }, { pending: 0, approved: 0, rejected: 0, completed: 0, cancelled: 0 });
+
+    const stats = {
+      totalUsers: users.length,
+      usersByRole,
+      totalProducts: products.length,
+      totalRentals: rentals.length,
+      rentalsByStatus,
+      recentActivity: {
+        newUsers: users.filter(u => {
+          const daysSinceCreation = (Date.now() - new Date(u.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+          return daysSinceCreation <= 7;
+        }).length,
+        newProducts: products.filter(p => {
+          const daysSinceCreation = (Date.now() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+          return daysSinceCreation <= 7;
+        }).length,
+        newRentals: rentals.filter(r => {
+          const daysSinceCreation = (Date.now() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+          return daysSinceCreation <= 7;
+        }).length
+      }
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Admin stats error:', error);
+    res.status(500).json({ message: 'Error fetching admin statistics' });
+  }
+});
+
+// User Management
+router.get('/users', async (req, res) => {
   try {
     const users = await User.find().select('-password');
     res.json(users);
-  } catch (err) {
-    console.error('Get users error:', err);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users' });
   }
 });
 
-// Delete user
-router.delete('/users/:id', auth, checkRole(['admin']), async (req, res) => {
+router.get('/users/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select('-password');
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
-    await user.deleteOne(); // Using deleteOne instead of remove
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user' });
+  }
+});
+
+router.patch('/users/:id', async (req, res) => {
+  try {
+    const { role, isActive } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { role, isActive },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating user' });
+  }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     res.json({ message: 'User deleted successfully' });
-  } catch (err) {
-    console.error('Delete user error:', err);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting user' });
   }
 });
 
-// Update user
-router.put('/users/:id', auth, checkRole(['admin']), async (req, res) => {
+// Product Management
+router.get('/products', async (req, res) => {
   try {
-    const { name, email, role } = req.body;
-    const user = await User.findById(req.params.id);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    const products = await Product.find().populate('vendor', 'name email');
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching products' });
+  }
+});
+
+router.get('/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).populate('vendor', 'name email');
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching product' });
+  }
+});
+
+router.patch('/products/:id', async (req, res) => {
+  try {
+    const { availability, status } = req.body;
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { availability, status },
+      { new: true, runValidators: true }
+    ).populate('vendor', 'name email');
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Update user fields
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (role) user.role = role;
-
-    await user.save();
-    res.json({ message: 'User updated successfully', user: { 
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    }});
-  } catch (err) {
-    console.error('Update user error:', err);
-    res.status(500).json({ error: 'Server error' });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating product' });
   }
 });
 
-// Get all products
-router.get('/products', auth, checkRole(['admin']), async (req, res) => {
+router.delete('/products/:id', async (req, res) => {
   try {
-    const products = await Product.find()
-      .populate('vendor', 'name email')
-      .sort({ createdAt: -1 });
-    res.json(products);
-  } catch (err) {
-    console.error('Get products error:', err);
-    res.status(500).json({ error: 'Server error' });
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting product' });
   }
 });
 
-// Get all rental requests
-router.get('/rentals', auth, checkRole(['admin']), async (req, res) => {
+// Rental Management
+router.get('/rentals', async (req, res) => {
   try {
     const rentals = await RentalRequest.find()
       .populate('product')
-      .populate('customer', 'name email')
-      .populate('vendor', 'name email')
-      .sort({ createdAt: -1 });
+      .populate('renter', '-password')
+      .populate('vendor', '-password');
     res.json(rentals);
-  } catch (err) {
-    console.error('Get rentals error:', err);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    console.error('Error fetching rentals:', error);
+    res.status(500).json({ message: 'Error fetching rentals' });
   }
 });
 
-// Get user statistics
-router.get('/stats', auth, checkRole(['admin']), async (req, res) => {
+router.get('/rentals/:id', async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const usersByRole = await User.aggregate([
-      {
-        $group: {
-          _id: '$role',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    const rental = await RentalRequest.findById(req.params.id)
+      .populate('product')
+      .populate('renter', '-password')
+      .populate('vendor', '-password');
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+    res.json(rental);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching rental' });
+  }
+});
 
-    const totalProducts = await Product.countDocuments();
-    const totalRentals = await RentalRequest.countDocuments();
-    const rentalsByStatus = await RentalRequest.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+router.patch('/rentals/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const rental = await RentalRequest.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    )
+      .populate('product')
+      .populate('renter', '-password')
+      .populate('vendor', '-password');
 
-    res.json({
-      totalUsers,
-      usersByRole: usersByRole.reduce((acc, curr) => {
-        acc[curr._id] = curr.count;
-        return acc;
-      }, {}),
-      totalProducts,
-      totalRentals,
-      rentalsByStatus: rentalsByStatus.reduce((acc, curr) => {
-        acc[curr._id] = curr.count;
-        return acc;
-      }, {})
-    });
-  } catch (err) {
-    console.error('Get stats error:', err);
-    res.status(500).json({ error: 'Server error' });
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+
+    res.json(rental);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating rental' });
   }
 });
 
